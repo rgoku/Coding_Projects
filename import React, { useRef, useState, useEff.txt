@@ -1,0 +1,673 @@
+import React, { useRef, useState, useEffect } from 'react';
+import { ZoomIn, ZoomOut, RotateCw, Info, Sun, Zap, Activity } from 'lucide-react';
+
+const SolarFarm3D = () => {
+  const canvasRef = useRef(null);
+  const animationRef = useRef(null);
+  const [selectedComponent, setSelectedComponent] = useState(null);
+  const [rotation, setRotation] = useState({ x: -0.4, y: 0.8 });
+  const [zoom, setZoom] = useState(1.2);
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 });
+  const [time, setTime] = useState(0);
+  const [showLabels, setShowLabels] = useState(true);
+  const [powerFlow, setPowerFlow] = useState(true);
+
+  const components = {
+    module: {
+      name: 'Solar Module (PV Panel)',
+      description: 'Monocrystalline silicon photovoltaic module with bypass diodes and tempered glass. These panels convert sunlight directly into electricity using the photovoltaic effect.',
+      specs: [
+        'Power Output: 400-550W per module',
+        'Dimensions: 2.1m × 1.05m × 35mm',
+        'Cells: 144 half-cut monocrystalline',
+        'Efficiency: 20.5-22.8%',
+        'Voltage (Vmp): 37-42V DC',
+        'Current (Imp): 11-13A',
+        'Temperature Coefficient: -0.35%/°C',
+        'Frame: Anodized aluminum alloy',
+        'Weight: 22-28 kg',
+        'Warranty: 25-30 years power output'
+      ],
+      color: '#3b82f6'
+    },
+    string: {
+      name: 'String Configuration',
+      description: 'Series-connected modules to achieve optimal voltage for inverter input. This configuration helps minimize power losses and ensures safe operation.',
+      specs: [
+        'Modules per String: 24-28 units',
+        'String Power: 10-15 kW',
+        'String Voltage: 900-1100V DC',
+        'String Current: 11-13A',
+        'Wire: 10 AWG PV wire, UV resistant',
+        'Connectors: MC4, IP67 rated',
+        'Overcurrent Protection: String fuses',
+        'Voltage Drop: <1% typical',
+        'Maximum System Voltage: 1500V DC'
+      ],
+      color: '#eab308'
+    },
+    tracker: {
+      name: 'Single-Axis Solar Tracker',
+      description: 'Motorized tracking system with GPS and astronomical algorithm for optimal sun following. Tracks the sun from east to west to maximize energy capture.',
+      specs: [
+        'Type: Horizontal single-axis',
+        'Rotation Range: ±60° tracking angle',
+        'Motors: DC servo with encoders',
+        'Capacity: 80-120 modules per tracker',
+        'Wind Rating: 140 mph survival',
+        'Energy Gain: 15-25% vs fixed tilt',
+        'Control: Networked PLCs',
+        'Backtracking: Yes, to avoid shading',
+        'Sensors: Inclinometer and anemometer'
+      ],
+      color: '#64748b'
+    },
+    combiner: {
+      name: 'String Combiner Box',
+      description: 'Weather-resistant enclosure consolidating DC strings with protection devices. Provides monitoring and safety features for multiple strings.',
+      specs: [
+        'Input Strings: 12-16 strings',
+        'Fusing: 15A DC rated per string',
+        'Surge Protection: Type 1 & 2 SPD',
+        'Monitoring: Per-string current sensing',
+        'Enclosure: NEMA 4X, IP65',
+        'Buswork: Tinned copper, 400A rated',
+        'Output: Combined DC to inverter',
+        'Disconnect: Lockable DC switch',
+        'Communication: RS485/Modbus'
+      ],
+      color: '#22c55e'
+    },
+    cable: {
+      name: 'DC Power Cabling',
+      description: 'Heavy-gauge photovoltaic cables with copper conductors. Designed for outdoor use with resistance to environmental factors.',
+      specs: [
+        'Conductor: Stranded tinned copper',
+        'Insulation: Cross-linked polyethylene',
+        'Size: 2 AWG - 4/0 AWG',
+        'Voltage Rating: 1000V - 1500V DC',
+        'Temperature: -40°C to +90°C',
+        'UV Resistant: 25+ year lifespan',
+        'Current Capacity: 100-400A',
+        'Jacket: Halogen-free, flame retardant',
+        'Standards: UL 4703, EN 50618'
+      ],
+      color: '#f59e0b'
+    },
+    inverter: {
+      name: 'Central Inverter',
+      description: 'Three-phase grid-tied inverter with maximum power point tracking. Converts DC power from the array to AC power for the grid.',
+      specs: [
+        'Power Rating: 1000-1500 kW',
+        'DC Input: 900-1100V, 1200A max',
+        'AC Output: 480V 3-phase, 60Hz',
+        'Efficiency: 98.5-99% peak',
+        'MPPT Channels: 8-12 independent',
+        'Cooling: Forced air with filters',
+        'Grid Compliance: IEEE 1547, UL 1741',
+        'Protection: Arc fault, ground fault',
+        'Display: Touchscreen HMI',
+        'Harmonic Distortion: <3% THD'
+      ],
+      color: '#ef4444'
+    },
+    transformer: {
+      name: 'Step-Up Transformer',
+      description: 'Oil-filled or dry-type transformer for grid interconnection. Steps up the voltage from the inverter to match the grid requirements.',
+      specs: [
+        'Rating: 1500-2500 kVA',
+        'Primary: 480V 3-phase',
+        'Secondary: 13.8kV or 34.5kV',
+        'Type: Pad-mounted outdoor',
+        'Efficiency: 98-99%',
+        'Cooling: ONAN (oil) or AN (dry)',
+        'Protection: Lightning arresters',
+        'Impedance: 5-7%',
+        'Standards: ANSI/IEEE C57'
+      ],
+      color: '#8b5cf6'
+    }
+  };
+
+  useEffect(() => {
+    const animate = () => {
+      setTime(t => t + 0.01);
+      animationRef.current = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(animationRef.current);
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const width = rect.width;
+    const height = rect.height;
+
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      const bgGradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, width);
+      bgGradient.addColorStop(0, '#1e293b');
+      bgGradient.addColorStop(1, '#0f172a');
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(0, 0, width, height);
+
+      const ambientGlow = ctx.createRadialGradient(width * 0.7, height * 0.3, 0, width * 0.7, height * 0.3, width * 0.8);
+      ambientGlow.addColorStop(0, 'rgba(251, 191, 36, 0.15)');
+      ambientGlow.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      ctx.fillStyle = ambientGlow;
+      ctx.fillRect(0, 0, width, height);
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const scale = 45 * zoom;
+
+      const project = (x, y, z) => {
+        const cosX = Math.cos(rotation.x);
+        const sinX = Math.sin(rotation.x);
+        const cosY = Math.cos(rotation.y);
+        const sinY = Math.sin(rotation.y);
+        let y1 = y * cosX - z * sinX;
+        let z1 = y * sinX + z * cosX;
+        let x1 = x * cosY - z1 * sinY;
+        let z2 = x * sinY + z1 * cosY;
+        const perspective = 1 / (1 + z2 / 15);
+        return {
+          x: centerX + x1 * scale * perspective,
+          y: centerY - y1 * scale * perspective,
+          z: z2,
+          perspective
+        };
+      };
+
+      ctx.strokeStyle = 'rgba(100, 150, 255, 0.15)';
+      ctx.lineWidth = 1;
+      for (let i = -8; i <= 8; i++) {
+        const opacity = 0.1 + (1 - Math.abs(i) / 8) * 0.15;
+        ctx.strokeStyle = `rgba(100, 150, 255, ${opacity})`;
+
+        const start = project(i * 1.5, -8, 0);
+        const end = project(i * 1.5, 8, 0);
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+
+        const start2 = project(-8, i * 1.5, 0);
+        const end2 = project(8, i * 1.5, 0);
+        ctx.beginPath();
+        ctx.moveTo(start2.x, start2.y);
+        ctx.lineTo(end2.x, end2.y);
+        ctx.stroke();
+      }
+
+      const drawDetailedBox = (x, y, z, w, h, d, color, label, details = {}, highlight = false) => {
+        const vertices = [
+          project(x - w/2, y - h/2, z - d/2),
+          project(x + w/2, y - h/2, z - d/2),
+          project(x + w/2, y + h/2, z - d/2),
+          project(x - w/2, y + h/2, z - d/2),
+          project(x - w/2, y - h/2, z + d/2),
+          project(x + w/2, y - h/2, z + d/2),
+          project(x + w/2, y + h/2, z + d/2),
+          project(x - w/2, y + h/2, z + d/2),
+        ];
+
+        const avgZ = vertices.reduce((sum, v) => sum + v.z, 0) / vertices.length;
+
+        const faces = [
+          { indices: [1, 2, 6, 5], brightness: 1.0 },
+          { indices: [2, 3, 7, 6], brightness: 0.85 },
+          { indices: [0, 1, 2, 3], brightness: 0.7 },
+          { indices: [0, 3, 7, 4], brightness: 0.5 },
+          { indices: [0, 1, 5, 4], brightness: 0.4 },
+          { indices: [4, 5, 6, 7], brightness: 0.3 },
+        ];
+
+        faces.forEach(face => {
+          const r = parseInt(color.slice(1, 3), 16);
+          const g = parseInt(color.slice(3, 5), 16);
+          const b = parseInt(color.slice(5, 7), 16);
+
+          ctx.fillStyle = `rgba(${Math.round(r * face.brightness)}, ${Math.round(g * face.brightness)}, ${Math.round(b * face.brightness)}, 0.95)`;
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 * face.brightness})`;
+          ctx.lineWidth = 1.5;
+
+          ctx.beginPath();
+          ctx.moveTo(vertices[face.indices[0]].x, vertices[face.indices[0]].y);
+          face.indices.forEach(idx => {
+            ctx.lineTo(vertices[idx].x, vertices[idx].y);
+          });
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          if (details.gridPattern && face.brightness > 0.6) {
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.15 * face.brightness})`;
+            ctx.lineWidth = 0.5;
+            for (let i = 1; i < 4; i++) {
+              const t = i / 4;
+              const v1 = face.indices[0];
+              const v2 = face.indices[1];
+              const v3 = face.indices[2];
+              const v4 = face.indices[3];
+
+              ctx.beginPath();
+              ctx.moveTo(
+                vertices[v1].x + (vertices[v2].x - vertices[v1].x) * t,
+                vertices[v1].y + (vertices[v2].y - vertices[v1].y) * t
+              );
+              ctx.lineTo(
+                vertices[v4].x + (vertices[v3].x - vertices[v4].x) * t,
+                vertices[v4].y + (vertices[v3].y - vertices[v4].y) * t
+              );
+              ctx.stroke();
+            }
+          }
+        });
+
+        if (highlight) {
+          ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
+          ctx.lineWidth = 3;
+          faces.forEach(face => {
+            ctx.beginPath();
+            ctx.moveTo(vertices[face.indices[0]].x, vertices[face.indices[0]].y);
+            face.indices.forEach(idx => {
+              ctx.lineTo(vertices[idx].x, vertices[idx].y);
+            });
+            ctx.closePath();
+            ctx.stroke();
+          });
+        }
+
+        if (showLabels && label) {
+          const labelPos = project(x, y - h/2 - 0.5, z);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.font = 'bold 13px Inter, sans-serif';
+          const metrics = ctx.measureText(label);
+          ctx.fillRect(labelPos.x - metrics.width/2 - 6, labelPos.y - 16, metrics.width + 12, 22);
+
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, labelPos.x, labelPos.y);
+        }
+
+        return { avgZ, vertices };
+      };
+
+      const drawCable = (from, to, color, thickness = 3, animated = false) => {
+        const start = project(from.x, from.y, from.z);
+        const end = project(to.x, to.y, to.z);
+
+        if (animated && powerFlow) {
+          const flowOffset = (time % 1);
+          for (let i = 0; i < 5; i++) {
+            const t = (i / 5 + flowOffset) % 1;
+            const px = start.x + (end.x - start.x) * t;
+            const py = start.y + (end.y - start.y) * t;
+
+            const gradient = ctx.createRadialGradient(px, py, 0, px, py, 8);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(px, py, 6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.lineWidth = thickness + 2;
+        ctx.beginPath();
+        ctx.moveTo(start.x + 2, start.y + 2);
+        ctx.lineTo(end.x + 2, end.y + 2);
+        ctx.stroke();
+
+        const cableGradient = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
+        cableGradient.addColorStop(0, color);
+        cableGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.8)');
+        cableGradient.addColorStop(1, color);
+        ctx.strokeStyle = cableGradient;
+        ctx.lineWidth = thickness;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+      };
+
+      // Panels (modules)
+      const panelStartX = -6;
+      const panelStartY = -3;
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 8; col++) {
+          const px = panelStartX + col * 0.55;
+          const py = panelStartY + row * 0.45;
+          const pz = 3 + Math.sin(time + col * 0.3) * 0.05;
+
+          drawDetailedBox(px, py, pz, 0.5, 0.4, 0.06, components.module.color,
+            row === 1 && col === 3 ? 'Solar Module' : '',
+            { gridPattern: true },
+            selectedComponent === 'module'
+          );
+
+          const cellProj = project(px, py, pz + 0.04);
+          ctx.fillStyle = 'rgba(30, 58, 138, 0.3)';
+          for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 2; j++) {
+              ctx.fillRect(
+                cellProj.x - 15 + j * 16,
+                cellProj.y - 10 + i * 7,
+                14, 6
+              );
+            }
+          }
+        }
+      }
+
+      // String connections
+      ctx.strokeStyle = 'rgba(234, 179, 8, 0.6)';
+      ctx.lineWidth = 2;
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 7; col++) {
+          drawCable(
+            { x: panelStartX + col * 0.55 + 0.25, y: panelStartY + row * 0.45, z: 3 },
+            { x: panelStartX + (col + 1) * 0.55 - 0.25, y: panelStartY + row * 0.45, z: 3 },
+            components.string.color,
+            2,
+            false,
+          );
+        }
+      }
+
+      // Tracker
+      drawDetailedBox(0, -1.5, 2, 7, 0.4, 0.5, components.tracker.color, 'Tracker Mount', {}, selectedComponent === 'tracker');
+
+      for (let i = -2; i <= 2; i++) {
+        drawDetailedBox(i * 2, -1.5, 1, 0.3, 0.4, 1.8, '#475569', '');
+      }
+
+      // Combiner boxes
+      const combinerY = 1;
+      for (let i = 0; i < 2; i++) {
+        const cx = 4 + i * 1.5;
+        drawDetailedBox(cx, combinerY, 2, 0.7, 1, 0.5, components.combiner.color,
+          i === 0 ? 'Combiner Box' : '',
+          {},
+          selectedComponent === 'combiner'
+        );
+
+        const combProj = project(cx, combinerY, 2.3);
+        ctx.fillStyle = '#15803d';
+        ctx.fillRect(combProj.x - 10, combProj.y - 15, 20, 8);
+        ctx.fillStyle = '#86efac';
+        ctx.fillRect(combProj.x - 8, combProj.y - 13, 4, 4);
+      }
+
+      // Cables to combiner
+      drawCable(
+        { x: 1.5, y: -1.5, z: 2 },
+        { x: 4, y: combinerY, z: 2 },
+        components.cable.color,
+        4,
+        true
+      );
+
+      drawCable(
+        { x: -1.5, y: -1.5, z: 2 },
+        { x: 5.5, y: combinerY, z: 2 },
+        components.cable.color,
+        4,
+        true
+      );
+
+      // Cable to inverter
+      drawCable(
+        { x: 4.75, y: combinerY, z: 2 },
+        { x: 2, y: 4, z: 1 },
+        components.cable.color,
+        6,
+        true
+      );
+
+      // Inverter
+      drawDetailedBox(2, 4, 1, 1.5, 2, 1, components.inverter.color, 'Inverter', {}, selectedComponent === 'inverter');
+
+      const invProj = project(2, 4, 1.5);
+      ctx.fillStyle = '#7f1d1d';
+      for (let i = 0; i < 6; i++) {
+        ctx.fillRect(invProj.x - 25 + i * 10, invProj.y - 20, 8, 30);
+      }
+
+      ctx.fillStyle = powerFlow ? '#22c55e' : '#ef4444';
+      ctx.beginPath();
+      ctx.arc(invProj.x - 20, invProj.y + 15, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Cable to transformer
+      drawCable(
+        { x: 2, y: 4, z: 0.5 },
+        { x: 2, y: 7, z: 0.5 },
+        'rgba(34, 197, 94, 1)',
+        5,
+        true
+      );
+
+      // Transformer
+      drawDetailedBox(2, 7.5, 0.5, 1.2, 1.5, 1.2, components.transformer.color, 'Transformer', {}, selectedComponent === 'transformer');
+
+      const transProj = project(2, 7.5, 1.1);
+      ctx.strokeStyle = '#6d28d9';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(transProj.x - 20 + i * 10, transProj.y - 20);
+        ctx.lineTo(transProj.x - 20 + i * 10, transProj.y + 20);
+        ctx.stroke();
+      }
+
+      // Grid connection
+      drawDetailedBox(2, 10, 0, 0.8, 1, 0.8, '#a855f7', 'Grid');
+
+      drawCable(
+        { x: 2, y: 8.5, z: 0.5 },
+        { x: 2, y: 9.5, z: 0 },
+        'rgba(168, 85, 247, 1)',
+        4,
+        true
+      );
+
+      const outputProj = project(2, 11, 0);
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.3)';
+      ctx.beginPath();
+      ctx.arc(outputProj.x, outputProj.y, 30 + Math.sin(time * 2) * 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#a855f7';
+      ctx.font = 'bold 16px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡ 1.2 MW', outputProj.x, outputProj.y + 5);
+    };
+
+    draw();
+  }, [rotation, zoom, time, showLabels, powerFlow, selectedComponent]);
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setLastMouse({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastMouse.x;
+    const dy = e.clientY - lastMouse.y;
+    setRotation(prev => ({
+      x: prev.x + dy * 0.008,
+      y: prev.y + dx * 0.008
+    }));
+    setLastMouse({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  return (
+    <div className="w-full h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col">
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-6 border-b border-slate-700 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+              <Sun className="text-yellow-400" size={32} />
+              Solar Farm System Architecture
+            </h1>
+            <p className="text-slate-300">Interactive 3D visualization - Drag to rotate - Scroll to zoom</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-600">
+              <div className="flex items-center gap-2 text-green-400">
+                <Activity size={20} />
+                <span className="font-bold">1.2 MW</span>
+              </div>
+              <div className="text-xs text-slate-400">Active Power</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 relative">
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full cursor-grab active:cursor-grabbing"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onWheel={(e) => {
+              e.preventDefault();
+              setZoom(z => Math.max(0.5, Math.min(3, z - e.deltaY * 0.001)));
+            }}
+          />
+          <div className="absolute top-6 right-6 flex flex-col gap-3">
+            <button
+              onClick={() => setZoom(z => Math.min(z + 0.3, 3))}
+              className="bg-slate-800/90 backdrop-blur p-3 rounded-xl text-white hover:bg-slate-700 transition shadow-lg border border-slate-600"
+              title="Zoom In"
+            >
+              <ZoomIn size={22} />
+            </button>
+            <button
+              onClick={() => setZoom(z => Math.max(z - 0.3, 0.5))}
+              className="bg-slate-800/90 backdrop-blur p-3 rounded-xl text-white hover:bg-slate-700 transition shadow-lg border border-slate-600"
+              title="Zoom Out"
+            >
+              <ZoomOut size={22} />
+            </button>
+            <button
+              onClick={() => setRotation({ x: -0.4, y: 0.8 })}
+              className="bg-slate-800/90 backdrop-blur p-3 rounded-xl text-white hover:bg-slate-700 transition shadow-lg border border-slate-600"
+              title="Reset View"
+            >
+              <RotateCw size={22} />
+            </button>
+            <button
+              onClick={() => setShowLabels(!showLabels)}
+              className={`bg-slate-800/90 backdrop-blur p-3 rounded-xl transition shadow-lg border border-slate-600 ${
+                showLabels ? 'text-blue-400' : 'text-slate-400'
+              }`}
+              title="Toggle Labels"
+            >
+              <Info size={22} />
+            </button>
+            <button
+              onClick={() => setPowerFlow(!powerFlow)}
+              className={`bg-slate-800/90 backdrop-blur p-3 rounded-xl transition shadow-lg border border-slate-600 ${
+                powerFlow ? 'text-yellow-400' : 'text-slate-400'
+              }`}
+              title="Toggle Power Flow Animation"
+            >
+              <Zap size={22} />
+            </button>
+          </div>
+          <div className="absolute bottom-6 left-6 bg-slate-800/90 backdrop-blur p-4 rounded-xl border border-slate-600 shadow-2xl">
+            <h3 className="font-bold text-white mb-3 text-sm">Power Flow</h3>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded bg-blue-500"></div>
+                <span className="text-slate-300">DC from Modules</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded bg-yellow-500"></div>
+                <span className="text-slate-300">String Connections</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded bg-orange-500"></div>
+                <span className="text-slate-300">Combined DC Bus</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded bg-green-500"></div>
+                <span className="text-slate-300">AC Output</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded bg-purple-500"></div>
+                <span className="text-slate-300">Grid Connection</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="w-96 bg-gradient-to-b from-slate-900 to-slate-800 overflow-y-auto border-l border-slate-700 shadow-2xl">
+          <div className="p-6">
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+              <Info size={24} className="text-blue-400" />
+              System Components
+            </h2>
+            {Object.entries(components).map(([key, comp]) => (
+              <div
+                key={key}
+                onClick={() => setSelectedComponent(selectedComponent === key ? null : key)}
+                className={`mb-4 p-5 rounded-xl cursor-pointer transition-all duration-200 border ${
+                  selectedComponent === key
+                    ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-xl border-blue-400 scale-105'
+                    : 'bg-slate-800/50 text-slate-200 hover:bg-slate-700/70 border-slate-600'
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div
+                    className="w-4 h-4 rounded"
+                    style={{ backgroundColor: comp.color }}
+                  ></div>
+                  <h3 className="font-bold text-lg">{comp.name}</h3>
+                </div>
+                <p className="text-sm opacity-90 mb-3">{comp.description}</p>
+                {selectedComponent === key && (
+                  <ul className="text-sm space-y-2 mt-4 border-t border-white/20 pt-3">
+                    {comp.specs.map((spec, idx) => (
+                      <li key={idx} className="flex items-start">
+                        <span className="mr-2 text-blue-300">•</span>
+                        <span>{spec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SolarFarm3D;
+

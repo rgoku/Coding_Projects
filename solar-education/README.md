@@ -2,6 +2,9 @@
 
 [View Full Project Repository](https://github.com/rgoku/Coding_Projects/tree/main/solar-education)
 
+https://rgoku.github.io/Coding_Projects/solar-education/Ampacity_Renewables_Solar_Education.html
+
+
 This is a refactored, modular version of the Solar Education interactive 3D application with advanced site configuration features.
 
 ## 🆕 New Features in Version 2.0

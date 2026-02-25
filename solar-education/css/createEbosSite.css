@@ -1,0 +1,173 @@
+/* Create EBOS Site Modal - converted from React inline styles */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --ebos-bg: #0b1121;
+  --ebos-bg-deep: #060b17;
+  --ebos-card: #111c32;
+  --ebos-card-hover: #162442;
+  --ebos-card-disabled: #0a0f1a;
+  --ebos-border: #1c2d4a;
+  --ebos-border-active: #00b8d4;
+  --ebos-border-dim: #152238;
+  --ebos-accent: #00d4ff;
+  --ebos-accent-glow: rgba(0,212,255,0.15);
+  --ebos-text: #e4eaf6;
+  --ebos-text-sub: #6b82a8;
+  --ebos-text-dim: #3d5278;
+  --ebos-text-disabled: #2a3a55;
+  --ebos-pink: #ff4081;
+  --ebos-orange: #ff9100;
+  --ebos-green: #00e676;
+  --ebos-yellow: #ffea00;
+  --ebos-font: 'Segoe UI', 'SF Pro Display', -apple-system, sans-serif;
+  --ebos-font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', monospace;
+}
+
+#createEbosSiteModal {
+  position: fixed; inset: 0; z-index: 2000; display: none;
+  font-family: var(--ebos-font); color: var(--ebos-text);
+}
+#createEbosSiteModal.active { display: block; }
+
+/* Wizard View */
+.ebos-wizard-wrap {
+  width: 100%; height: 100vh; background: var(--ebos-bg-deep);
+  display: flex; align-items: center; justify-content: center;
+  overflow: auto; padding: 20px;
+}
+.ebos-wizard-card {
+  width: 100%; max-width: 720px; background: var(--ebos-card);
+  border-radius: 16px; border: 2px solid var(--ebos-border-active);
+  box-shadow: 0 0 60px rgba(0,180,220,0.08), 0 20px 60px rgba(0,0,0,0.5);
+  position: relative; overflow: hidden;
+}
+.ebos-wizard-glow {
+  position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ebos-accent), transparent);
+}
+.ebos-wizard-header { padding: 28px 32px 0; text-align: center; }
+.ebos-wizard-icon {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: linear-gradient(135deg, #ff4081, #ff9100);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 800; color: #fff;
+  box-shadow: 0 4px 15px rgba(255,64,129,0.3);
+}
+.ebos-wizard-title { font-size: 22px; font-weight: 700; color: var(--ebos-pink); display: inline; margin-left: 12px; vertical-align: middle; }
+.ebos-wizard-subtitle { font-size: 13px; color: var(--ebos-text-sub); margin: 0 0 20px; }
+
+/* Steps indicator */
+.ebos-steps { display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+.ebos-step { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.ebos-step-dot { width: 8px; height: 8px; border-radius: 50%; }
+.ebos-step-line { width: 20px; height: 1px; margin: 0 2px; }
+
+/* Categories and Options */
+.ebos-cat-title { font-size: 12px; font-weight: 700; color: var(--ebos-orange); letter-spacing: 0.8px; margin-bottom: 10px; }
+.ebos-opts { display: grid; gap: 10px; }
+.ebos-opts-2 { grid-template-columns: 1fr 1fr; }
+.ebos-opts-3 { grid-template-columns: 1fr 1fr 1fr; }
+.ebos-opt {
+  padding: 14px; border-radius: 10px; border: 1.5px solid var(--ebos-border);
+  background: var(--ebos-bg); cursor: pointer; text-align: center;
+  font-family: var(--ebos-font); transition: all 0.2s; position: relative; overflow: hidden;
+}
+.ebos-opt:hover:not(.ebos-opt-disabled) { background: var(--ebos-card-hover); border-color: rgba(0,212,255,0.3); }
+.ebos-opt-selected {
+  border-color: var(--ebos-border-active) !important;
+  background: linear-gradient(135deg, rgba(0,180,220,0.12), rgba(0,212,255,0.06)) !important;
+  box-shadow: 0 0 20px rgba(0,212,255,0.08);
+}
+.ebos-opt-disabled { opacity: 0.35; cursor: not-allowed; background: var(--ebos-card-disabled); border-color: var(--ebos-border-dim); }
+.ebos-opt-name { font-size: 13px; font-weight: 600; color: var(--ebos-text); margin-bottom: 4px; line-height: 1.3; }
+.ebos-opt-sub { font-size: 10px; color: var(--ebos-text-dim); line-height: 1.3; }
+
+/* Footer */
+.ebos-footer { padding: 16px 28px 24px; border-top: 1px solid var(--ebos-border-dim); display: flex; align-items: center; justify-content: space-between; }
+.ebos-reset-btn { padding: 9px 20px; border-radius: 8px; border: 1px solid var(--ebos-border); background: transparent; color: var(--ebos-text-sub); cursor: pointer; font-family: var(--ebos-font); font-size: 13px; }
+.ebos-build-btn {
+  padding: 9px 28px; border-radius: 8px; border: none;
+  background: var(--ebos-card-disabled); color: var(--ebos-text-disabled);
+  cursor: not-allowed; font-family: var(--ebos-font); font-size: 13px; font-weight: 700;
+}
+.ebos-build-btn.ready {
+  background: linear-gradient(135deg, var(--ebos-accent), #448aff);
+  color: #000; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,212,255,0.25);
+}
+
+/* Designer View */
+.ebos-designer { width: 100%; height: 100vh; background: var(--ebos-bg-deep); display: flex; flex-direction: column; overflow: hidden; }
+.ebos-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-bottom: 1px solid var(--ebos-border); flex-shrink: 0; background: var(--ebos-card); }
+.ebos-back-btn { background: var(--ebos-bg); border: 1px solid var(--ebos-border); color: var(--ebos-text-sub); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-family: var(--ebos-font); font-size: 11px; }
+.ebos-config-id { font-size: 13px; font-weight: 700; }
+.ebos-class-badge { font-size: 10px; padding: 2px 8px; border-radius: 4px; color: #000; font-weight: 800; }
+.ebos-config-desc { font-size: 11px; color: var(--ebos-text-sub); }
+.ebos-stat-item { text-align: center; }
+.ebos-stat-label { font-size: 10px; color: var(--ebos-text-dim); letter-spacing: 0.5px; font-family: var(--ebos-font-mono); }
+.ebos-stat-value { font-weight: 700; font-size: 14px; font-family: var(--ebos-font-mono); }
+
+.ebos-body { display: flex; flex: 1; overflow: hidden; }
+.ebos-3d-wrap { flex: 1; position: relative; }
+.ebos-3d-mount { width: 100%; height: 100%; }
+
+/* Navigation hint */
+.ebos-nav-hint { position: absolute; top: 12px; left: 12px; background: rgba(6,11,23,0.88); backdrop-filter: blur(10px); border-radius: 10px; padding: 10px 14px; border: 1px solid var(--ebos-border); font-size: 11px; color: var(--ebos-text-sub); line-height: 1.6; }
+.ebos-nav-hint strong { color: var(--ebos-text); }
+
+/* 3D Legend */
+.ebos-3d-legend { position: absolute; bottom: 12px; left: 12px; background: rgba(6,11,23,0.92); backdrop-filter: blur(10px); border-radius: 10px; padding: 12px 14px; border: 1px solid var(--ebos-border); font-size: 10px; transition: all 0.2s; }
+.ebos-legend-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+.ebos-legend-title { font-weight: 700; color: var(--ebos-text-dim); font-size: 9px; letter-spacing: 1px; }
+.ebos-legend-item { display: flex; align-items: center; gap: 7px; margin-top: 4px; }
+.ebos-legend-dot { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
+
+/* SVG Compass */
+.ebos-compass { position: absolute; top: 8px; right: 8px; user-select: none; }
+
+/* Side Panel */
+.ebos-side { width: 300px; flex-shrink: 0; background: var(--ebos-card); border-left: 1px solid var(--ebos-border); display: flex; flex-direction: column; overflow: hidden; }
+.ebos-side-tabs { display: flex; border-bottom: 1px solid var(--ebos-border); flex-shrink: 0; }
+.ebos-side-tab { flex: 1; padding: 8px; border: none; background: transparent; color: var(--ebos-text-dim); font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; font-family: var(--ebos-font-mono); border-bottom: 2px solid transparent; }
+.ebos-side-tab.active { background: var(--ebos-bg-deep); color: var(--ebos-accent); border-bottom-color: var(--ebos-accent); }
+.ebos-side-content { flex: 1; overflow: auto; padding: 14px; }
+
+/* Slider */
+.ebos-slider-wrap { margin-bottom: 12px; }
+.ebos-slider-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
+.ebos-slider-label { font-size: 10px; color: var(--ebos-text-sub); }
+.ebos-slider-value { font-size: 10px; color: var(--ebos-accent); font-weight: 600; font-family: var(--ebos-font-mono); }
+.ebos-slider-track { position: relative; height: 18px; display: flex; align-items: center; }
+.ebos-slider-bg { position: absolute; width: 100%; height: 3px; background: var(--ebos-border-dim); border-radius: 2px; }
+.ebos-slider-fill { position: absolute; height: 3px; background: var(--ebos-accent); border-radius: 2px; }
+.ebos-slider-input { position: absolute; width: 100%; height: 18px; opacity: 0; cursor: pointer; margin: 0; }
+.ebos-slider-thumb { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: var(--ebos-accent); border: 2px solid var(--ebos-bg-deep); pointer-events: none; box-shadow: 0 0 6px rgba(0,212,255,0.3); }
+
+/* Section label */
+.ebos-sl { font-size: 9px; color: var(--ebos-text-dim); letter-spacing: 1px; font-weight: 700; font-family: var(--ebos-font-mono); margin-top: 4px; margin-bottom: 8px; }
+
+/* Info row */
+.ebos-ir { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--ebos-border-dim); font-size: 11px; }
+.ebos-ir-label { color: var(--ebos-text-sub); }
+.ebos-ir-value { color: var(--ebos-text); font-weight: 600; }
+
+/* Stat row */
+.ebos-sr { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-radius: 6px; background: var(--ebos-bg-deep); border: 1px solid var(--ebos-border-dim); margin-bottom: 6px; }
+.ebos-sr-label { font-size: 10px; color: var(--ebos-text-dim); font-family: var(--ebos-font-mono); }
+.ebos-sr-value { font-weight: 700; font-size: 12px; font-family: var(--ebos-font-mono); }
+.ebos-sr-accent .ebos-sr-value { font-size: 14px; color: var(--ebos-accent); }
+
+/* Chain */
+.ebos-chain { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.ebos-chain-item { font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; color: #000; white-space: nowrap; }
+.ebos-chain-arrow { color: var(--ebos-text-dim); font-size: 9px; }
+
+/* Info box */
+.ebos-info-box { padding: 10px; border-radius: 6px; border: 1px solid; font-size: 10px; color: var(--ebos-text-sub); line-height: 1.6; }
+.ebos-info-box.style { background: rgba(74,170,170,0.05); border-color: var(--ebos-border); }
+.ebos-info-box.constraints { background: rgba(255,82,82,0.05); border-color: rgba(255,82,82,0.15); line-height: 1.7; }
+
+/* Close button for EBOS */
+.ebos-close-btn { position: absolute; top: 10px; right: 10px; z-index: 10; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--ebos-border); background: var(--ebos-card); color: var(--ebos-text-sub); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.ebos-close-btn:hover { background: var(--ebos-card-hover); color: #fff; }

@@ -1,0 +1,203 @@
+/* Bottom controls and button styles */
+
+.controls {
+  position: absolute;
+  bottom: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 100;
+  background: rgba(15,23,42,0.9);
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(56,189,248,0.1);
+}
+
+.control-btn {
+  background: rgba(30,41,59,0.8);
+  border: 1px solid rgba(56,189,248,0.2);
+  color: #94a3b8;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  background: rgba(56,189,248,0.15);
+  color: #fff;
+  border-color: rgba(56,189,248,0.3);
+}
+
+.control-btn.active-view {
+  background: linear-gradient(135deg, #ff1493, #ff69b4);
+  border-color: #ff1493;
+  color: #fff;
+}
+
+.camera-hint {
+  position: absolute;
+  bottom: 85px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15,23,42,0.8);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 11px;
+  color: #64748b;
+  z-index: 100;
+  border: 1px solid rgba(56,189,248,0.1);
+}
+
+/* View demo buttons */
+.view-demo-btn {
+  display: inline-block;
+  background: linear-gradient(135deg, #ff1493, #ff69b4);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(255,20,147,0.3);
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.view-demo-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255,20,147,0.4);
+}
+
+.view-demo-btn.green {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  box-shadow: 0 4px 15px rgba(16,185,129,0.3);
+}
+
+.view-demo-btn.green:hover {
+  box-shadow: 0 6px 20px rgba(16,185,129,0.4);
+}
+
+/* Quiz button */
+.quiz-btn {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  border-color: #10b981 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.quiz-btn:hover {
+  background: linear-gradient(135deg, #059669, #047857) !important;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4) !important;
+}
+
+/* Feature buttons */
+.feature-btn {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+  border-color: #8b5cf6 !important;
+  position: relative;
+}
+
+.feature-btn:hover {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4) !important;
+}
+
+.feature-btn.active {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.5) !important;
+}
+
+/* Tooltip bubbles */
+.tooltip-bubble {
+  position: absolute;
+  bottom: calc(100% + 15px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  background: linear-gradient(145deg, #1e293b, #0f172a);
+  border: 2px solid #38bdf8;
+  border-radius: 12px;
+  padding: 15px 18px;
+  width: 260px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  z-index: 1000;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 20px rgba(56, 189, 248, 0.2);
+}
+
+.tooltip-bubble.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) scale(1);
+}
+
+.tooltip-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 10px solid transparent;
+  border-top-color: #38bdf8;
+}
+
+.tooltip-bubble h4 {
+  color: #ff1493;
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tooltip-bubble p {
+  color: #cbd5e1;
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tooltip-bubble .tooltip-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tooltip-bubble button {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tooltip-bubble .tooltip-start {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  color: white;
+}
+
+.tooltip-bubble .tooltip-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.tooltip-bubble .tooltip-close {
+  background: transparent;
+  border: 1px solid #475569;
+  color: #94a3b8;
+}
+
+.tooltip-bubble .tooltip-close:hover {
+  border-color: #64748b;
+  color: #cbd5e1;
+}

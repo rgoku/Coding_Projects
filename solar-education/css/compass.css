@@ -1,0 +1,121 @@
+/* Compass Widget - Rotates with camera view */
+#compass {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 80px;
+  height: 80px;
+  background: rgba(15,35,45,0.95);
+  border: 2px solid #38bdf8;
+  border-radius: 50%;
+  z-index: 100;
+  box-shadow: 0 3px 15px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+
+#compass-ring {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: transform 0.1s ease-out;
+}
+
+/* N/S/E/W labels */
+.compass-n { position: absolute; top: 3px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: bold; color: #ff1493; }
+.compass-s { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: bold; color: #ff1493; }
+.compass-e { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); font-size: 12px; font-weight: bold; color: #ffaa00; }
+.compass-w { position: absolute; left: 5px; top: 50%; transform: translateY(-50%); font-size: 12px; font-weight: bold; color: #ffaa00; }
+
+/* Fixed center needle */
+.compass-needle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.compass-arrow-up {
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 22px solid #38bdf8;
+  margin-bottom: 2px;
+}
+
+.compass-center-dot {
+  width: 6px;
+  height: 6px;
+  background: #fff;
+  border-radius: 50%;
+  margin-top: -4px;
+}
+
+.compass-arrow-down {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 12px solid #1e3a5f;
+  margin-top: -2px;
+}
+
+/* Power Flow Legend */
+#powerFlowLegend {
+  position: fixed;
+  bottom: 110px;
+  right: 20px;
+  background: rgba(15,35,45,0.95);
+  border: 2px solid #38bdf8;
+  border-radius: 12px;
+  padding: 12px;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  min-width: 180px;
+  max-width: 200px;
+}
+
+#powerFlowLegend h4 {
+  margin: 0 0 8px 0;
+  color: #fff;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  padding-bottom: 6px;
+}
+
+.pfl-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.pfl-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.pfl-label {
+  color: #fff;
+  font-size: 11px;
+}
+
+.pfl-steps {
+  font-size: 10px;
+  color: #94a3b8;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 6px;
+  line-height: 1.4;
+}
+
+.pfl-steps p {
+  margin: 3px 0;
+}

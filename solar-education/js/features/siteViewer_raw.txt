@@ -1,0 +1,144 @@
+// ===== FULLSCREEN 3D SITE VIEWER =====
+let svScene, svCam, svRenderer, svAnimId;
+const svOrbit = {th:-0.5,ph:1.0,r:200,tTh:-0.5,tPh:1.0,tR:200,tgt:null,tTgt:null,drag:false,pan:false,lx:0,ly:0,dmp:0.06,autoRotate:false};
+const svKeys = {};
+window.addEventListener('keydown',e=>{svKeys[e.key]=true});
+window.addEventListener('keyup',e=>{svKeys[e.key]=false});
+
+function closeSiteViewer() {
+  if (svAnimId) cancelAnimationFrame(svAnimId); svAnimId = null;
+  if (svRenderer) { svRenderer.dispose(); svRenderer = null; }
+  if (svScene) { svScene.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose()}}); }
+  svScene = null; svCam = null;
+  const fs = document.getElementById('siteViewerFS');
+  const oldCv = fs.querySelector('canvas');
+  if (oldCv) oldCv.remove();
+  fs.classList.remove('active');
+}
+
+function svResetView(){svOrbit.tTh=-0.45;svOrbit.tPh=1.2;svOrbit.tR=140;if(svOrbit.tTgt)svOrbit.tTgt.set(0,3,0);}
+function svTopView(){svOrbit.tTh=0;svOrbit.tPh=0.06;svOrbit.tR=200;if(svOrbit.tTgt)svOrbit.tTgt.set(0,0,0);}
+function svToggleAuto(){svOrbit.autoRotate=!svOrbit.autoRotate;document.getElementById('svAutoBtn').classList.toggle('active');}
+
+function openSiteViewer() {
+  closeSiteViewer();
+  const fs = document.getElementById('siteViewerFS');
+  const configNum = getConfigNumber();
+  const lab = {
+    module: siteLabels[sbState.module],
+    inverter: siteLabels[sbState.inverter],
+    dc: siteLabels[sbState.dcCollection],
+    comb: siteLabels[sbState.dcCombo]
+  };
+
+  const badgeMax = sbState.module === 'bifacial-600' ? 8 : 5;
+  document.getElementById('svBadge').textContent = 'Config ' + configNum + ' of ' + badgeMax;
+  document.getElementById('svCfgPanel').innerHTML =
+    '<div class="sv-cfg-title">SITE CONFIGURATION</div>' +
+    '<div class="sv-cfg-row"><span class="sv-cfg-label">Module</span><span class="sv-cfg-val">' + lab.module.title + '</span></div>' +
+    '<div class="sv-cfg-row"><span class="sv-cfg-label">Inverter</span><span class="sv-cfg-val">' + lab.inverter.title + '</span></div>' +
+    '<div class="sv-cfg-row"><span class="sv-cfg-label">DC Collection</span><span class="sv-cfg-val">' + lab.dc.title + '</span></div>' +
+    '<div class="sv-cfg-row"><span class="sv-cfg-label">DC Combination</span><span class="sv-cfg-val">' + lab.comb.title + '</span></div>';
+
+  fs.classList.add('active');
+  const cv = document.createElement('canvas');
+  cv.id = 'svCanvas';
+  fs.insertBefore(cv, fs.firstChild);
+
+  const W = window.innerWidth, H = window.innerHeight;
+  const isBi = sbState.module === 'bifacial-600';
+
+  // ═══ SCENE ═══
+  svScene = new THREE.Scene();
+  svScene.background = new THREE.Color(0x8DBBD8);
+  svScene.fog = new THREE.FogExp2(0x8DBBD8, 0.0009);
+
+  svCam = new THREE.PerspectiveCamera(50, W/H, 0.5, 2500);
+  svRenderer = new THREE.WebGLRenderer({canvas:cv, antialias:true, stencil:false});
+  svRenderer.setSize(W,H);
+  svRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  svRenderer.shadowMap.enabled = true;
+  svRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  svRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+  svRenderer.toneMappingExposure = 1.15;
+  svRenderer.outputEncoding = THREE.sRGBEncoding;
+
+  // ═══ LIGHTS ═══
+  svScene.add(new THREE.AmbientLight(0xd8e8f8, 0.4));
+  svScene.add(new THREE.HemisphereLight(0x8DBBD8, 0x6B8040, 0.5));
+  const sun = new THREE.DirectionalLight(0xfff3dc, 1.5);
+  sun.position.set(90,140,70); sun.castShadow = true;
+  sun.shadow.mapSize.set(4096,4096);
+  const sc = sun.shadow.camera;
+  sc.left=-260;sc.right=260;sc.top=260;sc.bottom=-260;sc.near=1;sc.far=600;
+  sun.shadow.bias=-0.0002;sun.shadow.normalBias=0.02;
+  svScene.add(sun);
+  svScene.add(new THREE.DirectionalLight(0xb0c4de,0.2).translateX(-70).translateY(50).translateZ(-50));
+
+  // ═══ SKY DOME ═══
+  const skyG=new THREE.SphereGeometry(900,32,20);
+  const skyC=[];const sP=skyG.attributes.position;
+  for(let i=0;i<sP.count;i++){const y=sP.getY(i)/900;
+    if(y>0.4)skyC.push(0.42,0.62,0.85);
+    else if(y>0.1){const t=(y-0.1)/0.3;skyC.push(0.48+0.06*(1-t),0.68+0.04*(1-t),0.84+0.03*(1-t));}
+    else if(y>-0.05)skyC.push(0.58,0.74,0.83);
+    else skyC.push(0.55,0.7,0.78);}
+  skyG.setAttribute('color',new THREE.Float32BufferAttribute(skyC,3));
+  svScene.add(new THREE.Mesh(skyG,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide})));
+
+  // ═══ CLOUDS ═══
+  const clM=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.3,side:THREE.DoubleSide});
+  for(let i=0;i<10;i++){const cl=new THREE.Mesh(new THREE.PlaneGeometry(40+Math.random()*60,8+Math.random()*12),clM);cl.position.set(-250+Math.random()*550,120+Math.random()*40,-250+Math.random()*500);cl.rotation.x=-Math.PI/2;cl.rotation.z=Math.random()*Math.PI;svScene.add(cl);}
+
+  // Build the solar site
+  svBuildSite(svScene, sbState.inverter, sbState.dcCollection, sbState.dcCombo, isBi);
+
+  // ═══ CAMERA CONTROLS ═══
+  svOrbit.th=-0.45;svOrbit.ph=1.2;svOrbit.r=140;svOrbit.tTh=-0.45;svOrbit.tPh=1.2;svOrbit.tR=140;
+  svOrbit.tgt=new THREE.Vector3(0,3,0);svOrbit.tTgt=new THREE.Vector3(0,3,0);
+  svOrbit.drag=false;svOrbit.pan=false;svOrbit.autoRotate=false;
+  document.getElementById('svAutoBtn').classList.remove('active');
+
+  cv.addEventListener('mousedown',e=>{if(e.button===0)svOrbit.drag=true;if(e.button===2)svOrbit.pan=true;svOrbit.lx=e.clientX;svOrbit.ly=e.clientY});
+  cv.addEventListener('mousemove',e=>{const dx=e.clientX-svOrbit.lx,dy=e.clientY-svOrbit.ly;
+    if(svOrbit.drag){svOrbit.tTh-=dx*0.004;svOrbit.tPh=Math.max(0.06,Math.min(Math.PI/2.05,svOrbit.tPh-dy*0.004));}
+    if(svOrbit.pan){const s=svOrbit.r*0.001;const right=new THREE.Vector3();right.crossVectors(svCam.getWorldDirection(new THREE.Vector3()),new THREE.Vector3(0,1,0)).normalize();svOrbit.tTgt.addScaledVector(right,dx*s);svOrbit.tTgt.y=Math.max(-2,svOrbit.tTgt.y-dy*s*0.4);}
+    svOrbit.lx=e.clientX;svOrbit.ly=e.clientY});
+  cv.addEventListener('mouseup',()=>{svOrbit.drag=false;svOrbit.pan=false});
+  cv.addEventListener('mouseleave',()=>{svOrbit.drag=false;svOrbit.pan=false});
+  cv.addEventListener('wheel',e=>{svOrbit.tR=Math.max(10,Math.min(700,svOrbit.tR*(1+e.deltaY*0.0006)));e.preventDefault()},{passive:false});
+  cv.addEventListener('contextmenu',e=>e.preventDefault());
+  // Touch
+  let ltd=0;
+  cv.addEventListener('touchstart',e=>{if(e.touches.length===1){svOrbit.drag=true;svOrbit.lx=e.touches[0].clientX;svOrbit.ly=e.touches[0].clientY}else if(e.touches.length===2){svOrbit.drag=false;ltd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)}});
+  cv.addEventListener('touchmove',e=>{e.preventDefault();if(e.touches.length===1&&svOrbit.drag){const dx=e.touches[0].clientX-svOrbit.lx,dy=e.touches[0].clientY-svOrbit.ly;svOrbit.tTh-=dx*0.003;svOrbit.tPh=Math.max(0.06,Math.min(Math.PI/2.05,svOrbit.tPh-dy*0.003));svOrbit.lx=e.touches[0].clientX;svOrbit.ly=e.touches[0].clientY}else if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);svOrbit.tR=Math.max(10,Math.min(700,svOrbit.tR*(1-(d-ltd)*0.004)));ltd=d}},{passive:false});
+  cv.addEventListener('touchend',()=>{svOrbit.drag=false});
+
+  window.addEventListener('resize',()=>{if(!svRenderer||!svCam)return;svCam.aspect=innerWidth/innerHeight;svCam.updateProjectionMatrix();svRenderer.setSize(innerWidth,innerHeight)});
+
+  // Hint
+  const hint = document.getElementById('svHint');
+  if(hint){hint.style.opacity='1';setTimeout(()=>{hint.style.opacity='0';},5000);}
+
+  // ═══ RENDER LOOP — ultra smooth exponential damped camera ═══
+  let lastT=performance.now();
+  (function tick(){svAnimId=requestAnimationFrame(tick);
+    const now=performance.now(),dt=Math.min((now-lastT)/16.67,3);lastT=now;
+    const spd=0.5*dt;
+    if(svKeys.w||svKeys.ArrowUp)svOrbit.tTgt.z-=spd;
+    if(svKeys.s||svKeys.ArrowDown)svOrbit.tTgt.z+=spd;
+    if(svKeys.a||svKeys.ArrowLeft)svOrbit.tTgt.x-=spd;
+    if(svKeys.d||svKeys.ArrowRight)svOrbit.tTgt.x+=spd;
+    if(svOrbit.autoRotate&&!svOrbit.drag)svOrbit.tTh+=0.0015*dt;
+    const d=1-Math.exp(-8*dt/60);
+    svOrbit.th+=(svOrbit.tTh-svOrbit.th)*d;
+    svOrbit.ph+=(svOrbit.tPh-svOrbit.ph)*d;
+    svOrbit.r+=(svOrbit.tR-svOrbit.r)*d;
+    svOrbit.tgt.lerp(svOrbit.tTgt,d);
+    svCam.position.set(
+      svOrbit.tgt.x+svOrbit.r*Math.sin(svOrbit.ph)*Math.sin(svOrbit.th),
+      svOrbit.tgt.y+svOrbit.r*Math.cos(svOrbit.ph),
+      svOrbit.tgt.z+svOrbit.r*Math.sin(svOrbit.ph)*Math.cos(svOrbit.th));
+    svCam.lookAt(svOrbit.tgt);
+    svRenderer.render(svScene,svCam);
+  })();

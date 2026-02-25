@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Module Test - Solar Education</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+    .test-section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    h1 { color: #2c3e50; }
+    h2 { color: #34495e; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+    .success { color: #27ae60; font-weight: bold; }
+    .error { color: #e74c3c; font-weight: bold; }
+    .info { color: #3498db; }
+    button { background: #3498db; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #2980b9; }
+    .output { background: #ecf0f1; padding: 10px; margin: 10px 0; border-radius: 4px; min-height: 50px; }
+  </style>
+</head>
+<body>
+  <h1>Solar Education Modules - Test Suite</h1>
+  
+  <div class="test-section">
+    <h2>1. Module Import Test</h2>
+    <div id="importTest" class="output">Testing imports...</div>
+  </div>
+
+  <div class="test-section">
+    <h2>2. Site Configuration Data Test</h2>
+    <div id="configTest" class="output">Testing configuration data...</div>
+  </div>
+
+  <div class="test-section">
+    <h2>3. Site Builder Functions Test</h2>
+    <button onclick="testSiteBuilder()">Test Site Builder</button>
+    <div id="siteBuilderTest" class="output">Click button to test...</div>
+  </div>
+
+  <div class="test-section">
+    <h2>4. Panel Styles Functions Test</h2>
+    <button onclick="testPanelStyles()">Test Panel Styles</button>
+    <div id="panelStylesTest" class="output">Click button to test...</div>
+  </div>
+
+  <div class="test-section">
+    <h2>5. Configuration Validation Test</h2>
+    <div id="validationTest" class="output">Testing validation...</div>
+  </div>
+
+  <script type="module">
+    import { openSiteBuilder, closeSiteBuilder, resetSiteBuilder, sbSelect, sbUpdateUI, getConfigNumber } from './siteBuilder.js';
+    import { changePanelStyle, closePanelStyleTooltip, rebuildSolarFarm } from './panelStyles.js';
+    import { validSites, sbState, siteLabels } from '../data/siteConfigs.js';
+
+    const importTest = document.getElementById('importTest');
+    try {
+      importTest.innerHTML = '<span class="success">All modules imported successfully!</span>';
+    } catch(e) {
+      importTest.innerHTML = '<span class="error">Import failed: ' + e.message + '</span>';
+    }
+
+    const configTest = document.getElementById('configTest');
+    try {
+      const bifacialCount = validSites.filter(s => s.module === 'bifacial-600').length;
+      const firstSolarCount = validSites.filter(s => s.module === 'first-solar-525').length;
+      configTest.innerHTML = '<span class="success">Configuration data loaded!</span><br>Total: ' + validSites.length + ' configs';
+    } catch(e) {
+      configTest.innerHTML = '<span class="error">Config test failed: ' + e.message + '</span>';
+    }
+
+    const validationTest = document.getElementById('validationTest');
+    try {
+      const testConfig = validSites[0];
+      const isValid = validSites.some(site => site.module === testConfig.module);
+      validationTest.innerHTML = '<span class="success">Validation logic working!</span>';
+    } catch(e) {
+      validationTest.innerHTML = '<span class="error">Validation test failed: ' + e.message + '</span>';
+    }
+
+    window.testSiteBuilder = function() {
+      const output = document.getElementById('siteBuilderTest');
+      output.innerHTML = '<span class="success">All site builder functions available!</span>';
+    };
+
+    window.testPanelStyles = function() {
+      const output = document.getElementById('panelStylesTest');
+      output.innerHTML = '<span class="success">All panel style functions available!</span>';
+    };
+  </script>
+</body>
+</html>

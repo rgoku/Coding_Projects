@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shoals 1500V · SMA PEAK3 — Detail Viewer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@300;500;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#c5cad4;color:#1a1a2e;font-family:'DM Sans',sans-serif;overflow:hidden;height:100vh;width:100vw}
+  #cv{width:100%;height:100%;position:absolute;top:0;left:0}
+  canvas{display:block}
+  .ov{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
+  .hdr{position:absolute;top:14px;left:18px;pointer-events:auto}
+  .hdr h1{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#1a1a2e;letter-spacing:2.5px;text-transform:uppercase}
+  .hdr p{font-size:10px;color:#667;margin-top:2px;font-family:'IBM Plex Mono',monospace}
+  .ctrls{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:5px;pointer-events:auto}
+  .cb{
+    background:rgba(255,255,255,0.82);border:1px solid rgba(0,0,0,0.09);
+    color:#444;padding:8px 14px;border-radius:5px;cursor:pointer;
+    font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;
+    text-transform:uppercase;transition:all .2s;backdrop-filter:blur(10px);
+  }
+  .cb:hover{background:rgba(255,255,255,0.95);border-color:#00549f;color:#00549f}
+  .cb.on{background:#1a1a2e;border-color:#1a1a2e;color:#e8b84a;box-shadow:0 2px 10px rgba(26,26,46,0.25)}
+  .ip{
+    position:absolute;top:14px;right:14px;
+    background:rgba(255,255,255,0.87);border:1px solid rgba(0,0,0,0.07);
+    border-radius:9px;padding:12px 16px;pointer-events:auto;
+    backdrop-filter:blur(12px);max-width:240px;box-shadow:0 3px 16px rgba(0,0,0,0.05);
+  }
+  .ip h3{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#00549f;letter-spacing:2px;text-transform:uppercase;margin-bottom:7px}
+  .ip .ir{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(0,0,0,0.03);font-size:10px}
+  .ir .l{color:#888} .ir .v{color:#333;font-family:'IBM Plex Mono',monospace;font-size:9px;text-align:right;max-width:135px}
+  .leg{
+    position:absolute;bottom:56px;left:18px;pointer-events:auto;
+    background:rgba(255,255,255,0.7);border-radius:7px;padding:8px 12px;
+    backdrop-filter:blur(10px);border:1px solid rgba(0,0,0,0.05);
+  }
+  .li{display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:9px;color:#555;font-family:'IBM Plex Mono',monospace}
+  .ld{width:8px;height:8px;border-radius:50%;border:1px solid rgba(0,0,0,0.06)}
+  .hint{position:absolute;bottom:44px;left:50%;transform:translateX(-50%);font-size:9px;color:#999;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;pointer-events:none}
+
+  /* ── Click label ── */
+  #labels{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9}
+  #lbl-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:8}
+  #click-label{
+    position:absolute;pointer-events:none;
+    opacity:0;transition:opacity 0.25s;
+    transform:translate(-50%,0);
+    display:flex;flex-direction:column;align-items:center;gap:0;
+  }
+  #click-label.vis{opacity:1}
+  #click-label-dot{
+    width:7px;height:7px;border-radius:50%;flex-shrink:0;
+    border:1.5px solid rgba(255,255,255,0.75);
+  }
+  #click-label-line{
+    width:1px;height:22px;flex-shrink:0;
+  }
+  #click-label-pill{
+    font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;
+    letter-spacing:1.2px;text-transform:uppercase;
+    background:rgba(255,255,255,0.92);backdrop-filter:blur(10px);
+    border:1px solid rgba(26,26,46,0.14);border-radius:3px;
+    padding:4px 9px;white-space:nowrap;
+    box-shadow:0 2px 10px rgba(0,0,0,0.12);
+    color:#1a1a2e;
+  }
+  /* Back to Education link */
+  .back-to-education {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    background: rgba(26,26,46,0.88);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,84,159,0.4);
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: #00549f;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 1px;
+  }
+  .back-to-education:hover {
+    border-color: rgba(0,84,159,0.7);
+    background: rgba(26,26,46,0.95);
+    box-shadow: 0 0 15px rgba(0,84,159,0.2);
+  }
+</style>
+</head>
+<body>
+<a href="Ampacity_Renewables_Solar_Education.html" class="back-to-education">← Back to Education</a>
+<div id="cv"></div>
+<svg id="lbl-svg"></svg>
+<div id="labels">
+  <div id="click-label">
+    <div id="click-label-dot"></div>
+    <div id="click-label-line"></div>
+    <div id="click-label-pill"></div>
+  </div>
+</div>
+<div class="ov">
+  <div class="hdr">
+    <h1>Combinator Box &amp; Invertor &amp; Tracker</h1>
+    <p>Combinator Box · Invertor · Tracker — Full Internal Detail</p>
+  </div>
+  <div class="ip">
+    <h3>Component Info</h3>
+    <div class="ir"><span class="l">Name</span><span class="v" id="iN">Click a part</span></div>
+    <div class="ir"><span class="l">Type</span><span class="v" id="iT">—</span></div>
+    <div class="ir"><span class="l">Material</span><span class="v" id="iM">—</span></div>
+    <div class="ir"><span class="l">Function</span><span class="v" id="iF">—</span></div>
+  </div>
+  <div class="leg">
+    <div class="li"><div class="ld" style="background:#f2f2f2;border-color:#ccc"></div>Combinator Box (Fiberglass)</div>
+    <div class="li"><div class="ld" style="background:#00549f"></div>Invertor (Aluminum)</div>
+    <div class="li"><div class="ld" style="background:#8e9aa0"></div>Tracker (Galvanized Steel)</div>
+    <div class="li"><div class="ld" style="background:#c47a2a"></div>Copper Conductors</div>
+    <div class="li"><div class="ld" style="background:#1e7a35"></div>PCB / Electronics</div>
+    <div class="li"><div class="ld" style="background:#cc3333"></div>DC Positive</div>
+    <div class="li"><div class="ld" style="background:#222"></div>DC Negative</div>
+    <div class="li"><div class="ld" style="background:#8a6e2f"></div>Transformer Core</div>
+    <div class="li"><div class="ld" style="background:#888890"></div>Heatsink (Aluminum)</div>
+  </div>
+  <div class="hint">Drag to orbit · Scroll to zoom · Click for details</div>
+  <div class="ctrls">
+    <button class="cb on" data-v="assembled" onclick="setView('assembled')">Assembled</button>
+    <button class="cb" data-v="cutaway" onclick="setView('cutaway')">Cutaway</button>
+    <button class="cb" data-v="exploded" onclick="setView('exploded')">Exploded</button>
+    <button class="cb" data-v="xray" onclick="setView('xray')">X-Ray</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+function pm(m,x,y,z){m.position.set(x,y,z);return m}
+function pmr(m,x,y,z,rx,ry,rz){m.position.set(x,y,z);m.rotation.set(rx,ry,rz);return m}
+
+const ct=document.getElementById('cv');
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xc5cad4);
+const cam=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,200);
+const ren=new THREE.WebGLRenderer({antialias:true});
+ren.setSize(innerWidth,innerHeight);
+ren.setPixelRatio(Math.min(devicePixelRatio,2));
+ren.shadowMap.enabled=true;
+ren.shadowMap.type=THREE.PCFSoftShadowMap;
+ren.toneMapping=THREE.ACESFilmicToneMapping;
+ren.toneMappingExposure=1.5;
+ct.appendChild(ren.domElement);
+
+/* Lighting */
+scene.add(new THREE.HemisphereLight(0xe0e8f5,0x809098,0.7));
+const sun=new THREE.DirectionalLight(0xfff3e0,1.7);
+sun.position.set(8,14,10);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.near=1;sun.shadow.camera.far=60;
+sun.shadow.camera.left=-10;sun.shadow.camera.right=6;
+sun.shadow.camera.top=6;sun.shadow.camera.bottom=-6;
+sun.shadow.bias=-0.001;sun.shadow.radius=4;
+scene.add(sun);
+scene.add(pm(new THREE.DirectionalLight(0xb0c8e8,0.5),-6,4,-4));
+scene.add(pm(new THREE.DirectionalLight(0xffe8bb,0.4),-3,7,-8));
+scene.add(pm(new THREE.PointLight(0xfff0dd,0.3,12),0,-1,3));
+
+/* Ground */
+const gnd=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0xbcc0c8,roughness:0.88}));
+gnd.rotation.x=-Math.PI/2;gnd.position.y=-1.4;gnd.receiveShadow=true;scene.add(gnd);
+const grid=new THREE.GridHelper(20,40,0xa4a8b0,0xb0b4bc);
+grid.position.y=-1.39;grid.material.opacity=0.35;grid.material.transparent=true;scene.add(grid);
+
+/* Materials */
+function mk(c,m,r,o){return new THREE.MeshStandardMaterial({color:c,metalness:m,roughness:r,side:THREE.DoubleSide,...o})}
+
+const M={
+  shoalsShell: mk(0xf0f2f4, 0.02, 0.72),
+  shoalsDoor:  mk(0xf2f2f2, 0.02, 0.68),
+  smaShell:    mk(0x00549f, 0.7, 0.35),
+  smaDoor:     mk(0x00549f, 0.65, 0.42),
+  smaIn:       mk(0x004080, 0.6,  0.45),
+  copper:   mk(0xc47a2a,0.95,0.15),
+  copperOx: mk(0x8a5a20,0.8,0.3),
+  din:      mk(0xb0b8c0,0.7,0.35),
+  plBlk:    mk(0x1a1a1e,0.02,0.7),
+  plGray:   mk(0x666670,0.02,0.65),
+  plWht:    mk(0xd0d0d5,0.02,0.6),
+  dcRed:    mk(0xcc3333,0.15,0.55),
+  pe:       mk(0x55aa22,0.15,0.55),
+  acBlue:   mk(0x2277bb,0.15,0.55),
+  fuseGl:   mk(0xd0d8e0,0.05,0.2,{transparent:true,opacity:0.6}),
+  capTop:   mk(0x999999,0.7,0.3),
+  lead:     mk(0xaaaaaa,0.8,0.3),
+  spdW:     mk(0xdddddd,0.1,0.5),
+  spdGn:    mk(0x22aa44,0.1,0.55),
+  pcb:      mk(0x1e7a35,0.05,0.75),
+  trace:    mk(0xc4a030,0.8,0.25),
+  solder:   mk(0xb8b8c0,0.6,0.35),
+  capBlk:   mk(0x1a1a22,0.1,0.6),
+  ferrite:  mk(0x2a2a30,0.15,0.7),
+  lamin:    mk(0x8a6e2f,0.5,0.5),
+  chip:     mk(0x0e0e12,0.3,0.5),
+  hs:       mk(0x888890,0.75,0.28),
+  lcd:      mk(0x0a1a0a,0.1,0.15,{emissive:0x003300,emissiveIntensity:0.4}),
+  ledG:     mk(0x00ff44,0.1,0.3,{emissive:0x00ff44,emissiveIntensity:0.8}),
+  ledR:     mk(0xff2200,0.1,0.3,{emissive:0xff2200,emissiveIntensity:0.6}),
+  cBlk:     mk(0x111115,0.02,0.8),
+  cRed:     mk(0xaa2222,0.02,0.8),
+  rubber:   mk(0x222225,0,0.95),
+  safetyRed:mk(0xcc0000,0.15,0.40),
+  viewport: new THREE.MeshPhysicalMaterial({transmission:0.88,roughness:0.05,side:THREE.DoubleSide}),
+};
+
+/* Registry */
+const allParts=[],partMeta=new Map();
+
+function reg(mesh,meta){
+  const ap=o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}};
+  if(mesh.isMesh)ap(mesh);if(mesh.isGroup)mesh.traverse(ap);
+  allParts.push(mesh);
+  meta._op=mesh.position.clone();meta._os=mesh.scale.clone();
+  meta._eo=meta.eo||new THREE.Vector3();
+  partMeta.set(mesh.uuid,meta);
+  scene.add(mesh);return mesh;
+}
+function openBox(w,h,d,t,mat){
+  const g=new THREE.Group();
+  g.add(pm(new THREE.Mesh(new THREE.BoxGeometry(w,h,t),mat),0,0,-d/2+t/2));
+  g.add(pm(new THREE.Mesh(new THREE.BoxGeometry(w,t,d),mat),0,h/2-t/2,0));
+  g.add(pm(new THREE.Mesh(new THREE.BoxGeometry(w,t,d),mat),0,-h/2+t/2,0));
+  g.add(pm(new THREE.Mesh(new THREE.BoxGeometry(t,h,d),mat),-(w/2-t/2),0,0));
+  g.add(pm(new THREE.Mesh(new THREE.BoxGeometry(t,h,d),mat),w/2-t/2,0,0));
+  return g;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   SHOALS 1500V COMBINER BOX  (left)
+   ═══════════════════════════════════════════════════════ */
+const co=new THREE.Vector3(2.8,0,0);
+
+const cbShell=openBox(1.0,1.2,0.55,0.03,M.shoalsShell);
+cbShell.position.copy(co);
+reg(cbShell,{name:'Combinator Box',type:'IP65 NEMA 3R Housing',mat:'Fiberglass-Reinforced Polyester (RAL 9002)',func:'Weather-sealed fiberglass enclosure for string combining & protection',group:'c',isShell:true,eo:new THREE.Vector3(-2,1.8,0)});
+
+const cbDoor=new THREE.Group();
+const doorBase=new THREE.Mesh(new THREE.BoxGeometry(1.02,1.22,0.025),M.shoalsDoor.clone());
+cbDoor.add(doorBase);
+cbDoor.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.58,0.40,0.01),M.viewport),0,0.12,0.014));
+cbDoor.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.55,0.06,0.005),mk(0xeeeeee,0.05,0.5)),0,0.42,0.015));
+cbDoor.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.35,0.03,0.004),mk(0x222222,0.1,0.5)),0,0.42,0.017));
+const discKnob=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,0.04,20),M.safetyRed);
+discKnob.rotation.x=Math.PI/2; discKnob.position.set(0,-0.44,0.018);
+cbDoor.add(discKnob);
+cbDoor.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.01,0.05,0.01),mk(0xffffff,0.1,0.5)),0,-0.44,0.04));
+cbDoor.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.05,0.12,0.025),M.plGray),0.46,0,0.015));
+cbDoor.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.18,8),M.lead),-0.5,0.35,0));
+cbDoor.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.18,8),M.lead),-0.5,-0.35,0));
+cbDoor.position.set(co.x,co.y,co.z+0.3);
+reg(cbDoor,{name:'Combinator Box Door',type:'Hinged Cover w/ Rotary Isolator',mat:'Fiberglass + EPDM Gasket + Red Rotary Knob',func:'Sealed access with integrated load-break DC disconnect',group:'c',isFront:true,eo:new THREE.Vector3(0,0,2.5)});
+
+reg(pm(new THREE.Mesh(new THREE.BoxGeometry(0.75,0.045,0.09),M.din),co.x,co.y+0.2,co.z-0.12),
+{name:'DIN Rail — Upper',type:'Mounting (35mm)',mat:'Galvanized Steel',func:'Standard mounting for fuses & SPDs',group:'c',isInt:true,eo:new THREE.Vector3(0,0.4,-0.6)});
+reg(pm(new THREE.Mesh(new THREE.BoxGeometry(0.75,0.045,0.09),M.din),co.x,co.y-0.2,co.z-0.12),
+{name:'DIN Rail — Lower',type:'Mounting (35mm)',mat:'Galvanized Steel',func:'Lower rail for terminal blocks & isolator',group:'c',isInt:true,eo:new THREE.Vector3(0,-0.4,-0.6)});
+
+for(const by of [-0.35,0.35]){
+  const bus=new THREE.Group();
+  bus.add(new THREE.Mesh(new THREE.BoxGeometry(0.7,0.04,0.02),M.copper));
+  for(let bh=-0.25;bh<=0.25;bh+=0.1)
+    bus.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.01,0.025,8),M.copperOx),bh,0,0));
+  bus.position.set(co.x,co.y+by,co.z-0.08);
+  reg(bus,{name:by>0?'Positive Busbar (+DC)':'Negative Busbar (−DC)',type:'Power Conductor',mat:'Tin-Plated Copper Bar (10×3mm)',func:'Combines parallel string currents — rated 200A continuous',group:'c',isInt:true,eo:new THREE.Vector3(0,by*3,0)});
+}
+
+for(let fi=-3;fi<=3;fi++){
+  const fg=new THREE.Group();
+  fg.add(new THREE.Mesh(new THREE.BoxGeometry(0.055,0.2,0.055),M.plBlk));
+  fg.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.025,0.025,0.055),M.copper),0,0.08,0));
+  fg.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.025,0.025,0.055),M.copper),0,-0.08,0));
+  fg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.016,0.016,0.14,10),M.fuseGl));
+  fg.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.025,10),M.capTop),0,0.07,0));
+  fg.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.025,10),M.capTop),0,-0.07,0));
+  fg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.004,0.12,6),M.lead));
+  fg.position.set(co.x+fi*0.1,co.y+0.06,co.z-0.02);
+  reg(fg,{name:`String Fuse #${fi+4} (15A gPV)`,type:'Overcurrent Protection',mat:'Ceramic Fuse / Thermoplastic Holder',func:'Protects individual PV string from reverse current',group:'c',isInt:true,eo:new THREE.Vector3(fi*0.2,0.4,0.7)});
+}
+
+for(const sx of [-0.28,0.28]){
+  const sg=new THREE.Group();
+  sg.add(new THREE.Mesh(new THREE.BoxGeometry(0.1,0.22,0.08),M.spdW));
+  sg.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.04,0.03,0.005),M.spdGn),0,0.04,0.042));
+  sg.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.07,0.03,0.08),M.plGray),0,-0.12,0));
+  sg.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.05,8),M.copper),0,0.12,0));
+  sg.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.05,8),M.copper),0,-0.12,0));
+  sg.position.set(co.x+sx,co.y-0.25,co.z-0.06);
+  reg(sg,{name:'Surge Protection Device (1500V)',type:'Type II SPD (DC)',mat:'MOV Varistor / Thermoplastic',func:'Clamps lightning-induced transients — 40kA rated',group:'c',isInt:true,eo:new THREE.Vector3(sx*4,-1.2,0.5)});
+}
+
+const isoG=new THREE.Group();
+isoG.add(new THREE.Mesh(new THREE.BoxGeometry(0.14,0.2,0.12),M.plGray));
+isoG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.05,0.1,0.03),M.safetyRed),0,0.04,0.075));
+isoG.add(pm(new THREE.Mesh(new THREE.PlaneGeometry(0.1,0.035),M.plWht),0,-0.07,0.062));
+isoG.position.set(co.x,co.y-0.42,co.z+0.06);
+reg(isoG,{name:'DC Load-Break Isolator (1500V)',type:'Load-Break Disconnect',mat:'Polycarbonate / Silver Contacts',func:'Manual DC disconnect — lockout-tagout capable',group:'c',isInt:true,eo:new THREE.Vector3(0,-2,1.5)});
+
+for(const[dx,mat,n] of [[-0.14,M.dcRed,'DC+ Output'],[0,M.pe,'PE Ground'],[0.14,M.cBlk,'DC− Output']]){
+  reg(pm(new THREE.Mesh(new THREE.BoxGeometry(0.07,0.05,0.05),mat),co.x+dx,co.y-0.52,co.z),
+  {name:n,type:'Terminal Block',mat:'Brass / PA66 Nylon',func:'Output connection — accepts 6-16mm² conductors',group:'c',isInt:true,eo:new THREE.Vector3(dx*5,-2.2,0.3)});
+}
+
+for(let gi=-3;gi<=3;gi++){
+  const gg=new THREE.Group();
+  gg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.025,0.07,10),M.plGray));
+  gg.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.038,0.038,0.02,6),M.plGray),0,-0.045,0));
+  gg.position.set(co.x+gi*0.12,co.y-0.63,co.z);
+  reg(gg,{name:'Cable Gland (PG13.5)',type:'Cable Entry',mat:'Polyamide (IP68)',func:'Strain relief & sealed cable entry for PV strings',group:'c',isInt:false,eo:new THREE.Vector3(0,-1,0)});
+}
+
+const wCols=[M.cRed,M.cBlk,M.cRed,M.cBlk,M.cRed,M.cBlk,M.cRed];
+for(let wi=0;wi<7;wi++){
+  const wPts=[
+    new THREE.Vector3(co.x-0.3+wi*0.1,co.y-0.58,co.z),
+    new THREE.Vector3(co.x-0.3+wi*0.1,co.y-0.3,co.z+0.06),
+    new THREE.Vector3(co.x-0.32+wi*0.1,co.y+0.06,co.z+0.03),
+    new THREE.Vector3(co.x-0.3+wi*0.1,co.y+0.35,co.z-0.05),
+  ];
+  reg(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(wPts),20,0.007,8,false),wCols[wi]),
+  {name:`Internal Wire #${wi+1}`,type:'PV Wire (6mm²)',mat:'Tinned Copper / XLPE Insulation',func:'Connects string input → fuse → busbar',group:'c',isInt:true,eo:new THREE.Vector3((wi-3)*0.15,0,0.5)});
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   SMA PEAK3 INVERTER  (right)
+   ═══════════════════════════════════════════════════════ */
+const iv=new THREE.Vector3(5.6,0,0);
+
+const ivShell=openBox(1.4,1.8,0.85,0.04,M.smaShell);
+ivShell.position.copy(iv);
+reg(ivShell,{name:'Invertor',type:'IP65 Die-Cast Enclosure',mat:'Die-Cast Aluminum ADC12',func:'EMC-shielded aluminum housing with integrated heatsink backing',group:'i',isShell:true,eo:new THREE.Vector3(2.5,2,0)});
+
+const ivDoor=new THREE.Group();
+ivDoor.add(new THREE.Mesh(new THREE.BoxGeometry(1.42,1.82,0.025),M.smaDoor.clone()));
+for(let vy=-0.7;vy<=-0.4;vy+=0.05)
+  ivDoor.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.85,0.012,0.035),M.smaIn),0,vy,0));
+ivDoor.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.5,0.055,0.005),mk(0xffffff,0.05,0.5)),0,0.78,0.014));
+ivDoor.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.32,0.025,0.004),mk(0x003878,0.1,0.4)),-0.04,0.78,0.016));
+for(let li=-1;li<=1;li++)
+  ivDoor.add(pm(new THREE.Mesh(new THREE.SphereGeometry(0.01,8,8),li===0?M.ledR:M.ledG),li*0.09,0.55,0.015));
+for(const sx of [-0.65,0.65])for(const sy of [-0.85,0.85])
+  ivDoor.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.03,8),M.lead),sx,sy,0.013));
+ivDoor.position.set(iv.x,iv.y,iv.z+0.45);
+reg(ivDoor,{name:'Invertor Front Cover',type:'Sealed Cover Panel',mat:'Aluminum + IP65 Silicone Gasket',func:'Service access — 4× captive M5 screws, integrated cable duct',group:'i',isFront:true,eo:new THREE.Vector3(0,0,3)});
+
+const lcdG=new THREE.Group();
+lcdG.add(new THREE.Mesh(new THREE.PlaneGeometry(0.55,0.28),M.lcd));
+lcdG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.63,0.35,0.02),M.plBlk),0,0,-0.005));
+for(let bi=-2;bi<=2;bi++)
+  lcdG.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.013,0.013,0.009,10),M.plGray),bi*0.065,-0.22,0.006));
+for(let li=-1;li<=1;li++)
+  lcdG.add(pm(new THREE.Mesh(new THREE.SphereGeometry(0.01,8,8),li===0?M.ledR:M.ledG),li*0.09,-0.25,0.006));
+lcdG.position.set(iv.x,iv.y+0.65,iv.z+0.465);
+reg(lcdG,{name:'LCD Display Panel',type:'User Interface',mat:'128×64 LCD / Polycarbonate Lens',func:'Real-time kW, daily kWh, grid voltage, fault codes, WiFi status',group:'i',isInt:false,eo:new THREE.Vector3(0,1.3,3.1)});
+
+const pcbG=new THREE.Group();
+pcbG.add(new THREE.Mesh(new THREE.BoxGeometry(1.15,1.5,0.05),M.pcb));
+for(let ty=-0.65;ty<=0.65;ty+=0.14)
+  pcbG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(1.0,0.02,0.002),M.trace),0,ty,0.027));
+for(let tx=-0.42;tx<=0.42;tx+=0.17)
+  pcbG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.02,1.3,0.002),M.trace),tx,0,0.027));
+for(let spx=-0.4;spx<=0.4;spx+=0.22)for(let spy=-0.6;spy<=0.6;spy+=0.22){
+  const sp=new THREE.Mesh(new THREE.CylinderGeometry(0.009,0.009,0.006,8),M.solder);
+  sp.rotation.x=Math.PI/2;sp.position.set(spx,spy,0.028);pcbG.add(sp);
+}
+for(let rx=-0.35;rx<=0.35;rx+=0.18)for(let ry=-0.5;ry<=0;ry+=0.18)
+  pcbG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.025,0.012,0.01),M.chip),rx,ry,0.032));
+pcbG.position.set(iv.x,iv.y,iv.z+0.1);
+reg(pcbG,{name:'Main Power PCB',type:'Multi-Layer Circuit Board',mat:'FR4 / Heavy Copper (4oz) / Lead-Free ENIG',func:'Routes DC bus, gate drive signals, control logic, AC output',group:'i',isInt:true,eo:new THREE.Vector3(0,0,1.6)});
+
+for(const ci of [-1,1])for(const cj of [-1,1]){
+  const cg=new THREE.Group();
+  cg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.075,0.35,18),M.capBlk));
+  cg.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.078,0.078,0.012,18),M.capTop),0,0.175,0));
+  cg.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.11,0.002,0.003),M.plGray),0,0.18,0));
+  cg.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.003,0.002,0.11),M.plGray),0,0.18,0));
+  for(const lx of [-0.028,0.028])
+    cg.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.006,0.006,0.09,6),M.lead),lx,-0.22,0));
+  cg.position.set(iv.x+ci*0.3,iv.y+cj*0.4,iv.z+0.26);
+  reg(cg,{name:'DC Bus Capacitor (470µF/900V)',type:'Aluminum Electrolytic',mat:'Aluminum Foil / Electrolyte / Rubber Seal',func:'Smooths DC bus ripple, absorbs switching transients — 900V rated',group:'i',isInt:true,eo:new THREE.Vector3(ci*0.8,cj*0.7,1.8)});
+}
+
+const igbt=new THREE.Group();
+igbt.add(new THREE.Mesh(new THREE.BoxGeometry(0.5,0.3,0.065),M.copperOx));
+igbt.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.42,0.24,0.045),M.chip),0,0,0.055));
+igbt.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.34,0.18,0.006),mk(0x334455,0.1,0.3,{transparent:true,opacity:0.5})),0,0,0.08));
+for(let px=-0.18;px<=0.18;px+=0.04){
+  igbt.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.016,0.016,0.11),M.lead),px,-0.15,0.03));
+  igbt.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.016,0.016,0.11),M.lead),px,0.15,0.03));
+}
+for(const mx of [-0.2,0.2])for(const my of [-0.12,0.12])
+  igbt.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.07,8),M.lead),mx,my,0));
+igbt.position.set(iv.x,iv.y-0.1,iv.z-0.06);
+reg(igbt,{name:'IGBT Power Module (3-Phase)',type:'Power Semiconductor',mat:'Silicon Dies / Copper Baseplate / AlN Substrate',func:'6-pack IGBT — converts DC→AC at 16kHz SPWM',group:'i',isInt:true,eo:new THREE.Vector3(0,0,0.8)});
+
+const indG=new THREE.Group();
+const cW=0.3,cH=0.24;
+indG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(cW,0.035,0.22),M.lamin),0,-cH/2,0));
+indG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(cW,0.035,0.22),M.lamin),0,cH/2,0));
+indG.add(new THREE.Mesh(new THREE.BoxGeometry(0.065,cH,0.22),M.lamin));
+indG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.045,cH,0.22),M.lamin),-cW/2+0.022,0,0));
+indG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.045,cH,0.22),M.lamin),cW/2-0.022,0,0));
+const tw=new THREE.TorusGeometry(0.065,0.028,10,20);
+indG.add(pmr(new THREE.Mesh(tw,M.copper),-0.1,0,0,0,Math.PI/2,0));
+indG.add(pmr(new THREE.Mesh(tw,M.copperOx),0.1,0,0,0,Math.PI/2,0));
+indG.position.set(iv.x-0.38,iv.y+0.4,iv.z-0.12);
+reg(indG,{name:'AC Output Inductor (LCL)',type:'Magnetic Component',mat:'Grain-Oriented Silicon Steel / Enameled Copper',func:'Filters PWM harmonics — delivers clean 50/60Hz sine wave',group:'i',isInt:true,eo:new THREE.Vector3(-1.5,0.7,0.5)});
+
+const emiG=new THREE.Group();
+emiG.add(new THREE.Mesh(new THREE.BoxGeometry(0.5,0.3,0.035),M.pcb));
+emiG.add(pmr(new THREE.Mesh(new THREE.TorusGeometry(0.045,0.02,10,16),M.ferrite),-0.12,0.04,0.028,0,Math.PI/2,0));
+for(let fi=0;fi<3;fi++)
+  emiG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.055,0.08,0.035),mk(0xe8dcc0,0.05,0.8)),0.06+fi*0.09,-0.04,0.028));
+emiG.position.set(iv.x+0.38,iv.y+0.42,iv.z+0.12);
+reg(emiG,{name:'EMI Filter Board',type:'Conducted Emissions Filter',mat:'Ferrite Toroid / X2 Film Caps / FR4',func:'EN 61000 / FCC Part 15 compliant — suppresses conducted EMI',group:'i',isInt:true,eo:new THREE.Vector3(1.8,0.9,0.9)});
+
+const hsG=new THREE.Group();
+hsG.add(new THREE.Mesh(new THREE.BoxGeometry(1.2,1.6,0.05),M.hs));
+for(let fi=-8;fi<=8;fi++)
+  hsG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.018,1.52,0.28),M.hs),fi*0.075,0,-0.17));
+hsG.position.set(iv.x,iv.y,iv.z-0.46);
+reg(hsG,{name:'SMA Extruded Heatsink',type:'Passive Thermal Management',mat:'Aluminum 6063-T5 (Black Anodized)',func:'Conducts IGBT dissipation to 18 fins — natural + fan-assisted convection',group:'i',isInt:false,eo:new THREE.Vector3(0,0,-2)});
+
+for(let di=0;di<2;di++){
+  const dg=new THREE.Group();
+  dg.add(new THREE.Mesh(new THREE.BoxGeometry(0.1,0.08,0.13),di===0?M.dcRed:M.cBlk));
+  const sc=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.045,8),M.lead);
+  sc.position.set(0,0,0.075);sc.rotation.x=Math.PI/2;dg.add(sc);
+  dg.position.set(iv.x-0.42+di*0.24,iv.y-0.75,iv.z+0.13);
+  reg(dg,{name:di===0?'DC+ Input (MC4 / Screw)':'DC− Input (MC4 / Screw)',type:'DC Terminal',mat:'Brass / PPO Plastic',func:'Rated 1500VDC / 30A — accepts 4–10mm² conductors',group:'i',isInt:true,eo:new THREE.Vector3(-1+di*0.5,-1.6,0.7)});
+}
+
+const acB=new THREE.Group();
+acB.add(new THREE.Mesh(new THREE.BoxGeometry(0.32,0.08,0.09),M.plGray));
+const aCols=[M.cRed,M.plWht,M.acBlue,M.pe];
+for(let ai=0;ai<4;ai++){
+  acB.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.05,0.04,0.04),aCols[ai]),-0.11+ai*0.075,0.04,0));
+  const sc=new THREE.Mesh(new THREE.CylinderGeometry(0.009,0.009,0.035,8),M.lead);
+  sc.position.set(-0.11+ai*0.075,0.04,0.028);sc.rotation.x=Math.PI/2;acB.add(sc);
+}
+acB.position.set(iv.x+0.32,iv.y-0.75,iv.z+0.13);
+reg(acB,{name:'AC Output Terminal Block (L1/L2/N/PE)',type:'Split-Phase + PE',mat:'Brass Contacts / PA66',func:'240V split-phase AC output — rated 40A continuous',group:'i',isInt:true,eo:new THREE.Vector3(1.5,-1.6,0.7)});
+
+const relG=new THREE.Group();
+relG.add(new THREE.Mesh(new THREE.BoxGeometry(0.13,0.17,0.12),M.plBlk));
+relG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.11,0.03,0.1),M.acBlue),0,0.1,0));
+relG.position.set(iv.x+0.4,iv.y-0.32,iv.z+0.12);
+reg(relG,{name:'Grid Relay (Anti-Islanding)',type:'Safety Relay — UL1741 / IEEE 1547',mat:'AgSnO₂ Contacts / Coil',func:'Disconnects <2s on grid fault — prevents backfeed to utility',group:'i',isInt:true,eo:new THREE.Vector3(1.5,-0.4,1)});
+
+const commG=new THREE.Group();
+commG.add(new THREE.Mesh(new THREE.BoxGeometry(0.32,0.22,0.025),M.pcb));
+commG.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.006,0.006,0.2,6),M.plBlk),0.13,0.13,0.018));
+commG.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.055,0.055,0.016),M.chip),-0.04,0,0.02));
+commG.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.009,0.009,0.022,8),M.lead),0.13,0.02,0.018));
+commG.position.set(iv.x-0.38,iv.y-0.38,iv.z+0.3);
+reg(commG,{name:'WiFi / RS485 Module',type:'Monitoring & Comms Interface',mat:'FR4 / ESP32 MCU / Ceramic Antenna',func:'Cloud monitoring, Modbus RTU, OTA firmware updates',group:'i',isInt:true,eo:new THREE.Vector3(-1.8,-0.6,2)});
+
+
+/* ═══════════════════════════════════════════════════════
+   ARRAY TRACKER
+   ═══════════════════════════════════════════════════════ */
+let trackerRoot = null;
+(function buildTracker(){
+  const tRoot = new THREE.Group();
+  trackerRoot = tRoot;
+  tRoot.position.set(0, 0.8, 0);
+  tRoot.scale.setScalar(0.58);
+  scene.add(tRoot);
+
+  function tReg(grp, meta){
+    const ap=o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}};
+    if(grp.isMesh)ap(grp); if(grp.isGroup)grp.traverse(ap);
+    allParts.push(grp);
+    meta._op  = grp.position.clone();
+    meta._os  = grp.scale.clone();
+    meta._eo  = meta.eo || new THREE.Vector3();
+    meta.isTracker = true;
+    partMeta.set(grp.uuid, meta);
+    tRoot.add(grp);
+  }
+
+  const mPlate   = new THREE.MeshStandardMaterial({color:'#b2bac0',metalness:0.28,roughness:0.50});
+  const mPlateDk = new THREE.MeshStandardMaterial({color:'#6c7880',metalness:0.52,roughness:0.50});
+  const mSteel   = new THREE.MeshStandardMaterial({color:'#8a9298',metalness:0.88,roughness:0.22});
+  const mSteelBt = new THREE.MeshStandardMaterial({color:'#bcc4cc',metalness:0.92,roughness:0.14});
+  const mMotor   = new THREE.MeshStandardMaterial({color:'#3c5060',metalness:0.68,roughness:0.40});
+  const mTBlack  = new THREE.MeshStandardMaterial({color:'#12161a',metalness:0.5, roughness:0.65});
+  const mYellow  = new THREE.MeshStandardMaterial({color:'#e8a010',emissive:'#a06000',emissiveIntensity:0.4,roughness:0.4});
+  const mPole    = new THREE.MeshStandardMaterial({color:'#8e9aa0',metalness:0.75,roughness:0.36});
+
+  const TB = (w,h,d,mat)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.castShadow=true; m.receiveShadow=true; return m; };
+  const TC = (rt,rb,h,s,mat)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,s),mat); m.castShadow=true; m.receiveShadow=true; return m; };
+  const Tpl = (m,x,y,z,rx=0,ry=0,rz=0)=>{ m.position.set(x,y,z); m.rotation.set(rx,ry,rz); return m; };
+
+  const poleH=4.0, poleW=0.155, poleD=0.135;
+  const poleGrp = new THREE.Group();
+  poleGrp.add(Tpl(TB(poleW,poleH,poleD,mPole),       0,-poleH/2-0.05,0));
+  poleGrp.add(Tpl(TB(0.28,0.05,0.24,mPole),          0,0.04,0));
+  poleGrp.add(Tpl(TB(0.38,0.055,0.32,mPole),         0,-poleH-0.03,0));
+  poleGrp.add(Tpl(TB(0.42,0.025,0.36,mPlateDk),      0,-poleH+0.0,0));
+  tReg(poleGrp,{name:'Tracker Pole',type:'Foundation Pole',
+    mat:'Galvanized Steel (HSS Section)',
+    func:'Structural support column — drives into ground, carries all tracker loads',
+    group:'t',eo:new THREE.Vector3(0,-2.5,0)});
+
+  const encGrp = new THREE.Group();
+  encGrp.add(Tpl(TC(0.052,0.052,0.30,14,mPlateDk),  -0.04,0.28,0.06));
+  const ballMesh=new THREE.Mesh(new THREE.SphereGeometry(0.082,16,12),mPlateDk);
+  ballMesh.castShadow=true; encGrp.add(Tpl(ballMesh,-0.04,0.50,0.06));
+  encGrp.add(Tpl(TC(0.038,0.038,0.06,12,mTBlack),   -0.04,0.38,0.06));
+  tReg(encGrp,{name:'Inclinometer / Encoder',type:'Position Sensor',
+    mat:'Hall-Effect Encoder / Anodized Aluminum',
+    func:'Measures torque-tube angle — feeds closed-loop tracking algorithm',
+    group:'t',eo:new THREE.Vector3(0,2.0,1.0)});
+
+  const brktGrp = new THREE.Group();
+  brktGrp.add(Tpl(TB(0.26,0.055,0.14,mPlateDk),    -0.20,-0.06,0.0));
+  brktGrp.add(Tpl(TB(0.055,0.32,0.12,mPlateDk),    -0.30,-0.20,0.0));
+  brktGrp.add(Tpl(TC(0.11,0.11,0.055,24,mPlateDk),  0,0,0.16,Math.PI/2,0,0));
+  brktGrp.add(Tpl(TC(0.11,0.11,0.055,24,mPlateDk),  0,0,-0.16,Math.PI/2,0,0));
+  brktGrp.add(Tpl(TC(0.082,0.082,0.50,16,mSteel),   0,0,0,Math.PI/2,0,0));
+  tReg(brktGrp,{name:'Drive Bracket & Torque Tube',type:'Structural / Drive',
+    mat:'Galvanized Steel Plate / HSS Tube',
+    func:'Transfers gearbox torque to torque tube — clamp rings prevent slip',
+    group:'t',eo:new THREE.Vector3(0,0.5,2.0)});
+
+  const gboxGrp = new THREE.Group();
+  gboxGrp.add(Tpl(TB(0.24,0.28,0.20,mMotor),        -0.30,-0.32,0.0));
+  gboxGrp.add(Tpl(TC(0.092,0.092,0.030,22,mPlateDk),-0.30,-0.32,0.115,Math.PI/2,0,0));
+  gboxGrp.add(Tpl(TC(0.032,0.032,0.16,12,mSteelBt), -0.30,-0.32,0.20,Math.PI/2,0,0));
+  [[-0.07,0.08],[0.07,0.08],[-0.07,-0.08],[0.07,-0.08]].forEach(([bz,by])=>{
+    gboxGrp.add(Tpl(TC(0.009,0.009,0.28,6,mSteelBt),-0.30,-0.32+by,bz,0,0,Math.PI/2));
+  });
+  tReg(gboxGrp,{name:'Gearbox',type:'Worm / Helical Reducer',
+    mat:'Cast Iron Housing / Hardened Steel Gears',
+    func:'Reduces motor speed, amplifies torque — self-locking under wind load',
+    group:'t',eo:new THREE.Vector3(-2.0,0,0.5)});
+
+  const motGrp = new THREE.Group();
+  motGrp.add(Tpl(TC(0.085,0.085,0.44,20,mMotor),   -0.26,-0.80,0.0));
+  for(let i=0;i<8;i++){
+    const fin=TB(0.28,0.006,0.18,mPlateDk);
+    fin.rotation.y=(i/8)*Math.PI*2; fin.position.set(-0.26,-0.80,0.0); motGrp.add(fin);
+  }
+  motGrp.add(Tpl(TC(0.085,0.085,0.020,20,mSteelBt),-0.26,-0.57,0.0));
+  motGrp.add(Tpl(TC(0.085,0.085,0.020,20,mSteelBt),-0.26,-1.03,0.0));
+  motGrp.add(Tpl(TB(0.14,0.08,0.16,mPlateDk),      -0.28,-0.56,0.0));
+  tReg(motGrp,{name:'Drive Motor',type:'BLDC / AC Induction Motor',
+    mat:'Aluminum Housing / Copper Windings / Neodymium Magnets',
+    func:'Drives tracker rotation — 24V DC, ~150W, IP67 rated',
+    group:'t',eo:new THREE.Vector3(-2.0,-2.0,0)});
+
+  const ctrlGrp = new THREE.Group();
+  ctrlGrp.position.set(-0.08,-0.52,0.10);
+  ctrlGrp.add(TB(0.20,0.26,0.16,mPlate));
+  const cbLid2=TB(0.22,0.28,0.020,mPlateDk); cbLid2.position.z=0.090; ctrlGrp.add(cbLid2);
+  const estop=new THREE.Mesh(new THREE.CylinderGeometry(0.020,0.020,0.034,14),mYellow);
+  estop.castShadow=true; estop.rotation.set(Math.PI/2,0,0); estop.position.set(0.055,0.07,0.102); ctrlGrp.add(estop);
+  const ering=new THREE.Mesh(new THREE.TorusGeometry(0.027,0.007,8,18),mTBlack);
+  ering.rotation.set(Math.PI/2,0,0); ering.position.set(0.055,0.07,0.100); ctrlGrp.add(ering);
+  const cond2=TC(0.013,0.013,0.12,10,mPlateDk); cond2.position.set(-0.03,-0.17,0.0); ctrlGrp.add(cond2);
+  tReg(ctrlGrp,{name:'Tracker Control Box',type:'Motor Controller / RTU',
+    mat:'Powder-Coated Aluminum / PA66 Glands',
+    func:'PWM motor control, encoder feedback loop, safety e-stop, Modbus RTU comms',
+    group:'t',eo:new THREE.Vector3(2.0,-0.5,0.5)});
+
+  const mountBrkt = new THREE.Group();
+  mountBrkt.add(Tpl(TB(0.10,0.050,0.14,mPlateDk), 0.0,-0.52,0.0));
+  tRoot.add(mountBrkt);
+
+  const outerR=1.12, innerHub=0.12, plateThk=0.040;
+  const shape=new THREE.Shape();
+  shape.moveTo(0,outerR);
+  shape.absarc(0,0,outerR,Math.PI/2,-Math.PI/2,true);
+  shape.lineTo(0,-innerHub);
+  shape.absarc(0,0,innerHub,-Math.PI/2,Math.PI/2,false);
+  shape.closePath();
+
+  function addCircHole(cx,cy,r){
+    const p=new THREE.Path(); p.absarc(cx,cy,r,0,Math.PI*2,true); shape.holes.push(p);
+  }
+  function addRectHole(cx,cy,w,h,angle=0){
+    const p=new THREE.Path(),c=Math.cos(angle),s=Math.sin(angle);
+    [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]].forEach(([x,y],i)=>{
+      const px=cx+x*c-y*s,py=cy+x*s+y*c;
+      i===0?p.moveTo(px,py):p.lineTo(px,py);
+    }); p.closePath(); shape.holes.push(p);
+  }
+  function addPolyHole(pts){
+    const p=new THREE.Path(); p.moveTo(pts[0][0],pts[0][1]);
+    pts.slice(1).forEach(([x,y])=>p.lineTo(x,y)); p.closePath(); shape.holes.push(p);
+  }
+
+  const LH=0.40,SW=0.062,GAP=0.012,LS=0.182;
+  const WCX=0.50,WCY=0.02;
+  function LETTER_A(cx,cy){
+    const bot=cy-LH*0.50,top=cy+LH*0.50,barY=cy-LH*0.05;
+    addPolyHole([[cx-LH*0.32,bot+SW*0.3],[cx-LH*0.32+SW*0.72,bot+SW*0.3],[cx-SW*0.25,barY-GAP],[cx-SW*0.25-SW*0.65,barY-GAP]]);
+    addPolyHole([[cx-SW*0.25-SW*0.65,barY+GAP],[cx-SW*0.25,barY+GAP],[cx-SW*0.17,top-SW],[cx-SW*0.17-SW*0.50,top-SW]]);
+    addPolyHole([[cx+LH*0.32-SW*0.72,bot+SW*0.3],[cx+LH*0.32,bot+SW*0.3],[cx+SW*0.25+SW*0.65,barY-GAP],[cx+SW*0.25,barY-GAP]]);
+    addPolyHole([[cx+SW*0.17,top-SW],[cx+SW*0.17+SW*0.50,top-SW],[cx+SW*0.25+SW*0.65,barY+GAP],[cx+SW*0.25,barY+GAP]]);
+    addRectHole(cx,barY,LH*0.28,SW*0.75);
+  }
+  function LETTER_R(cx,cy){
+    const bot=cy-LH*0.50,top=cy+LH*0.50,mid=cy+LH*0.08;
+    addRectHole(cx-LH*0.20,cy,SW,LH);
+    addCircHole(cx+LH*0.04,top-LH*0.205,LH*0.155);
+    addRectHole(cx-LH*0.04,top-SW*0.36,LH*0.22,SW);
+    addRectHole(cx-LH*0.04,mid+SW*0.36,LH*0.22,SW);
+    addRectHole(cx+LH*0.18,(top*0.5+mid*0.5),SW,LH*0.34);
+    addPolyHole([[cx-SW*0.1,mid-GAP],[cx+LH*0.09,mid-GAP],[cx+LH*0.33,bot+SW*0.4],[cx+LH*0.33-SW*0.80,bot+SW*0.4],[cx-SW*0.1-SW*0.36,mid-GAP-SW*0.50]]);
+  }
+  function LETTER_Y(cx,cy){
+    const bot=cy-LH*0.50,top=cy+LH*0.50,mid=cy+LH*0.06;
+    const al=Math.atan2(LH*0.44,LH*0.27);
+    addPolyHole([[cx-LH*0.27+SW*0.48*Math.sin(al),top-SW*0.48*Math.cos(al)],[cx-LH*0.27-SW*0.48*Math.sin(al),top+SW*0.48*Math.cos(al)],[cx-SW*0.27-SW*0.48*Math.sin(al),mid+GAP+SW*0.48*Math.cos(al)],[cx-SW*0.27+SW*0.48*Math.sin(al),mid+GAP-SW*0.48*Math.cos(al)]]);
+    addPolyHole([[cx+LH*0.27+SW*0.48*Math.sin(al),top+SW*0.48*Math.cos(al)],[cx+LH*0.27-SW*0.48*Math.sin(al),top-SW*0.48*Math.cos(al)],[cx+SW*0.27+SW*0.48*Math.sin(al),mid+GAP-SW*0.48*Math.cos(al)],[cx+SW*0.27-SW*0.48*Math.sin(al),mid+GAP+SW*0.48*Math.cos(al)]]);
+    addRectHole(cx,(mid+bot)*0.5-LH*0.03,SW,(mid-bot)*0.90);
+  }
+  LETTER_A(WCX-2*LS,WCY); LETTER_R(WCX-1*LS,WCY);
+  LETTER_R(WCX+0*LS,WCY); LETTER_A(WCX+1*LS,WCY); LETTER_Y(WCX+2*LS,WCY);
+
+  const TZ={x0:WCX-2*LS-0.11,x1:WCX+2*LS+0.11,y0:WCY-LH*0.56,y1:WCY+LH*0.60};
+  [[0.60,0.82,0.088],[0.32,0.95,0.072],[0.88,0.44,0.060],[0.97,0.02,0.052],
+   [0.88,-0.44,0.060],[0.60,-0.82,0.088],[0.32,-0.95,0.072],[0.50,0.66,0.042],
+   [0.80,-0.20,0.038],[0.50,-0.66,0.042],[0.20,0.99,0.034],[0.20,-0.99,0.034],
+   [0.74,0.64,0.030],[0.74,-0.64,0.030],
+  ].forEach(([hx,hy,hr])=>{
+    if(hx>TZ.x0&&hx<TZ.x1&&hy>TZ.y0&&hy<TZ.y1)return;
+    addCircHole(hx,hy,hr);
+  });
+  for(let i=0;i<=44;i++){
+    const a=-Math.PI/2+(i/44)*Math.PI;
+    addCircHole((outerR-0.058)*Math.cos(a),(outerR-0.058)*Math.sin(a),0.012);
+  }
+  for(let i=1;i<=10;i++){
+    const y=-outerR+i*outerR*2/11;
+    if(Math.abs(y)<innerHub+0.07)continue;
+    addCircHole(0.052,y,0.011);
+  }
+
+  const geo=new THREE.ExtrudeGeometry(shape,{
+    depth:plateThk,bevelEnabled:true,
+    bevelThickness:0.005,bevelSize:0.004,bevelSegments:3
+  });
+
+  const plateGroup=new THREE.Group();
+  plateGroup.rotation.z=-Math.PI/3;
+
+  const plate=new THREE.Mesh(geo,mPlate);
+  plate.position.set(0,0,-plateThk/2);
+  plate.castShadow=true; plate.receiveShadow=true;
+  plateGroup.add(plate);
+
+  for(let i=1;i<=43;i+=2){
+    const a=-Math.PI/2+(i/44)*Math.PI;
+    const bolt=new THREE.Mesh(new THREE.SphereGeometry(0.014,8,6),mSteelBt);
+    bolt.castShadow=true;
+    bolt.position.set((outerR-0.058)*Math.cos(a),(outerR-0.058)*Math.sin(a),plateThk*0.5+0.008);
+    plateGroup.add(bolt);
+  }
+
+  const hubCollar=TC(innerHub+0.036,innerHub+0.036,plateThk*2.2,32,mPlateDk);
+  hubCollar.rotation.x=Math.PI/2; plateGroup.add(hubCollar);
+
+  tReg(plateGroup,{name:'Gear / Stiffener Plate',type:'Structural Plate',
+    mat:'Laser-Cut Mild Steel (Galvanized)',
+    func:'Stiffens torque-tube span, carries module clamp loads — ARRAY stencil reduces weight',
+    group:'t',eo:new THREE.Vector3(0,2.0,-1.5)});
+})();
+
+
+/* ═══════════════════════════════════════════════════════
+   VIEW CONTROLLER
+   ═══════════════════════════════════════════════════════ */
+const animT=new Map();
+let currentView='assembled';
+
+const GROUP_OFFSET = {
+  c: new THREE.Vector3( 0.5, 0, 2.2),
+  i: new THREE.Vector3( 2.0, 0, 0),
+};
+
+function setView(mode){
+  currentView=mode;
+  document.querySelectorAll('.cb').forEach(b=>b.classList.toggle('on',b.dataset.v===mode));
+  allParts.forEach(mesh=>{
+    const m=partMeta.get(mesh.uuid);
+    if(m.isTracker) return;
+    const t={pos:m._op.clone(),opacity:1,scale:m._os.clone()};
+    if(mode==='cutaway'&&m.isFront)t.opacity=0;
+    else if(mode==='exploded'){
+      const base = GROUP_OFFSET[m.group] || new THREE.Vector3();
+      t.pos = m._op.clone().add(base).add(m._eo);
+    }
+    else if(mode==='xray'&&(m.isShell||m.isFront))t.opacity=0.06;
+    animT.set(mesh.uuid,t);
+  });
+  trackerTargetRotY = (mode==='exploded') ? Math.PI/2 : 0;
+  hideClickLabel();
+}
+
+/* Orbit */
+let drag=false,pM={x:0,y:0};
+let sph={theta:Math.PI*0.45,phi:1.55,r:13};
+const look=new THREE.Vector3(2.8,1.2,0);
+function updCam(){
+  cam.position.set(
+    look.x+sph.r*Math.sin(sph.phi)*Math.cos(sph.theta),
+    look.y+sph.r*Math.cos(sph.phi),
+    look.z+sph.r*Math.sin(sph.phi)*Math.sin(sph.theta)
+  );cam.lookAt(look);
+}
+ren.domElement.addEventListener('pointerdown',e=>{drag=true;pM={x:e.clientX,y:e.clientY}});
+window.addEventListener('pointerup',()=>drag=false);
+ren.domElement.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  sph.theta-=(e.clientX-pM.x)*0.005;
+  sph.phi=Math.max(0.15,Math.min(Math.PI-0.15,sph.phi-(e.clientY-pM.y)*0.005));
+  pM={x:e.clientX,y:e.clientY};
+});
+ren.domElement.addEventListener('wheel',e=>{sph.r=Math.max(3,Math.min(22,sph.r+e.deltaY*0.01))});
+
+/* Hover glow */
+let hoveredMeta = null;
+const glowColor_i = new THREE.Color(0x00aaff);
+const glowColor_c = new THREE.Color(0xffaa33);
+const glowColor_t = new THREE.Color(0x44ff88);
+const _hoverMv = new THREE.Vector2();
+const origEmissive = new Map();
+
+function getMeshes(){
+  const ms=[];
+  allParts.forEach(p=>{
+    if(p.isMesh)ms.push(p);
+    if(p.isGroup)p.traverse(c=>{if(c.isMesh)ms.push(c)});
+  });
+  return ms;
+}
+
+function setGlow(mesh, meta, on){
+  const glowCol = meta.group==='i' ? glowColor_i : meta.group==='t' ? glowColor_t : glowColor_c;
+  const apply = o => {
+    if(!o.isMesh || !o.material) return;
+    if(!origEmissive.has(o.uuid)){
+      origEmissive.set(o.uuid, o.material.emissive
+        ? o.material.emissive.clone()
+        : new THREE.Color(0x000000));
+    }
+    if(on){
+      o.material.emissive = glowCol.clone();
+      o.material.emissiveIntensity = 0.55;
+    } else {
+      o.material.emissive = origEmissive.get(o.uuid).clone();
+      o.material.emissiveIntensity = o.material.emissiveIntensity > 0.1
+        ? o.material.emissiveIntensity : 0;
+    }
+  };
+  if(mesh.isMesh) apply(mesh);
+  if(mesh.isGroup) mesh.traverse(apply);
+}
+
+ren.domElement.addEventListener('mousemove', e=>{
+  if(drag) return;
+  _hoverMv.x=(e.clientX/innerWidth)*2-1;
+  _hoverMv.y=-(e.clientY/innerHeight)*2+1;
+  rc.setFromCamera(_hoverMv, cam);
+  const hits = rc.intersectObjects(getMeshes(), false);
+
+  let newMeta = null;
+  if(hits.length){
+    let obj=hits[0].object, m=partMeta.get(obj.uuid);
+    while(!m && obj.parent){ obj=obj.parent; m=partMeta.get(obj.uuid); }
+    newMeta = m || null;
+  }
+
+  if(newMeta !== hoveredMeta){
+    if(hoveredMeta){
+      allParts.forEach(mesh=>{
+        if(partMeta.get(mesh.uuid)===hoveredMeta) setGlow(mesh, hoveredMeta, false);
+      });
+    }
+    if(newMeta){
+      allParts.forEach(mesh=>{
+        if(partMeta.get(mesh.uuid)===newMeta) setGlow(mesh, newMeta, true);
+      });
+    }
+    hoveredMeta = newMeta;
+    ren.domElement.style.cursor = newMeta ? 'pointer' : 'default';
+  }
+});
+
+ren.domElement.addEventListener('mouseleave', ()=>{
+  if(hoveredMeta){
+    allParts.forEach(mesh=>{
+      if(partMeta.get(mesh.uuid)===hoveredMeta) setGlow(mesh, hoveredMeta, false);
+    });
+    hoveredMeta=null;
+    ren.domElement.style.cursor='default';
+  }
+});
+
+/* Click label */
+const clickLabel   = document.getElementById('click-label');
+const clickDot     = document.getElementById('click-label-dot');
+const clickLine    = document.getElementById('click-label-line');
+const clickPill    = document.getElementById('click-label-pill');
+let activeMeta = null;
+
+function hideClickLabel(){
+  clickLabel.classList.remove('vis');
+  activeMeta=null;
+}
+
+function showClickLabel(meta, sx, sy){
+  const color = meta.group==='i' ? '#00549f' : meta.group==='t' ? '#44bb66' : '#c47a2a';
+  clickDot.style.background  = color;
+  clickLine.style.background = `linear-gradient(to bottom, ${color}99, ${color}22)`;
+  clickPill.textContent      = meta.name;
+  clickPill.style.borderLeft = `2.5px solid ${color}`;
+  clickPill.style.color      = meta.group==='i' ? '#003878' : meta.group==='t' ? '#1a4a2a' : '#7a4500';
+
+  clickLabel.style.left = sx+'px';
+  clickLabel.style.top  = sy+'px';
+  clickLabel.classList.add('vis');
+  activeMeta = meta;
+}
+
+/* Raycaster */
+const rc=new THREE.Raycaster(), mv=new THREE.Vector2();
+const _p3=new THREE.Vector3();
+
+ren.domElement.addEventListener('click', e=>{
+  mv.x=(e.clientX/innerWidth)*2-1;
+  mv.y=-(e.clientY/innerHeight)*2+1;
+  rc.setFromCamera(mv,cam);
+  const ms=[];
+  allParts.forEach(p=>{
+    if(p.isMesh)ms.push(p);
+    if(p.isGroup)p.traverse(c=>{if(c.isMesh)ms.push(c)});
+  });
+  const hits=rc.intersectObjects(ms,false);
+  if(!hits.length){ hideClickLabel(); return; }
+
+  let obj=hits[0].object, meta=partMeta.get(obj.uuid);
+  while(!meta && obj.parent){ obj=obj.parent; meta=partMeta.get(obj.uuid); }
+  if(!meta){ hideClickLabel(); return; }
+
+  if(activeMeta===meta){ hideClickLabel(); return; }
+
+  document.getElementById('iN').textContent=meta.name;
+  document.getElementById('iT').textContent=meta.type;
+  document.getElementById('iM').textContent=meta.mat;
+  document.getElementById('iF').textContent=meta.func;
+
+  _p3.setFromMatrixPosition(obj.matrixWorld);
+  _p3.project(cam);
+  const sx=(_p3.x*0.5+0.5)*innerWidth;
+  const sy=(-_p3.y*0.5+0.5)*innerHeight;
+
+  showClickLabel(meta, sx, sy);
+});
+
+/* Render loop */
+const _v3=new THREE.Vector3();
+const clock2 = new THREE.Clock();
+let trackerTargetRotY = 0;
+function animate(){
+  requestAnimationFrame(animate);
+  const t2 = clock2.getElapsedTime();
+
+  allParts.forEach(mesh=>{
+    const t=animT.get(mesh.uuid);if(!t)return;
+    const meta=partMeta.get(mesh.uuid);
+    if(meta&&meta.isTracker)return;
+    mesh.position.lerp(t.pos,0.06);mesh.scale.lerp(t.scale,0.06);
+    const ap=(o,tOp)=>{
+      if(!o.material)return;const m=o.material;
+      if(tOp<0.5){m.transparent=true;m.opacity+=(tOp-m.opacity)*0.06;m.depthWrite=m.opacity>0.1;o.visible=m.opacity>0.01}
+      else{o.visible=true;m.transparent=m.opacity<0.99;m.opacity+=(1-m.opacity)*0.06;if(m.opacity>0.99){m.transparent=false;m.depthWrite=true}}
+    };
+    if(mesh.isGroup)mesh.traverse(c=>{if(c.isMesh)ap(c,t.opacity)});else ap(mesh,t.opacity);
+  });
+
+  if(hoveredMeta){
+    const pulse = 0.35 + Math.sin(t2 * 5) * 0.2;
+    allParts.forEach(mesh=>{
+      if(partMeta.get(mesh.uuid)!==hoveredMeta) return;
+      const apply = o => {
+        if(o.isMesh && o.material && origEmissive.has(o.uuid))
+          o.material.emissiveIntensity = pulse;
+      };
+      if(mesh.isMesh) apply(mesh);
+      if(mesh.isGroup) mesh.traverse(apply);
+    });
+  }
+
+  if(trackerRoot){
+    trackerRoot.rotation.y += (trackerTargetRotY - trackerRoot.rotation.y) * 0.06;
+  }
+
+  updCam();ren.render(scene,cam);
+}
+setView('assembled');animate();
+addEventListener('resize',()=>{
+  cam.aspect=innerWidth/innerHeight;
+  cam.updateProjectionMatrix();
+  ren.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

@@ -357,6 +357,31 @@ for(let li=-1;li<=1;li++)
   ivDoor.add(pm(new THREE.Mesh(new THREE.SphereGeometry(0.01,8,8),li===0?M.ledR:M.ledG),li*0.09,0.55,0.015));
 for(const sx of [-0.65,0.65])for(const sy of [-0.85,0.85])
   ivDoor.add(pm(new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.03,8),M.lead),sx,sy,0.013));
+
+// Door handle — industrial recessed swing handle
+const handlePlate=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.16,0.012),M.plGray);
+handlePlate.position.set(0.56,0,0.019);ivDoor.add(handlePlate);
+// recessed pocket
+ivDoor.add(pm(new THREE.Mesh(new THREE.BoxGeometry(0.05,0.12,0.006),mk(0x333338,0.3,0.6)),0.56,0,0.013));
+// handle bar (the part you grab)
+const handleBar=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.09,0.018),mk(0xcccccc,0.85,0.18));
+handleBar.position.set(0.56,0,0.032);ivDoor.add(handleBar);
+// handle bar rounded ends
+for(const hy of [-0.04,0.04]){
+  const hEnd=new THREE.Mesh(new THREE.CylinderGeometry(0.009,0.009,0.018,8),mk(0xcccccc,0.85,0.18));
+  hEnd.rotation.x=Math.PI/2;hEnd.position.set(0.56,hy,0.032);ivDoor.add(hEnd);
+}
+// pivot pins (top and bottom of handle)
+for(const py of [-0.065,0.065]){
+  const pin=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.015,8),M.lead);
+  pin.position.set(0.56,py,0.022);ivDoor.add(pin);
+}
+// keyhole / latch cylinder
+const keyCyl=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.016,12),mk(0xb0b0b0,0.9,0.15));
+keyCyl.rotation.x=Math.PI/2;keyCyl.position.set(0.56,-0.1,0.025);ivDoor.add(keyCyl);
+const keySlot=new THREE.Mesh(new THREE.BoxGeometry(0.008,0.003,0.004),mk(0x222222,0.1,0.8));
+keySlot.position.set(0.56,-0.1,0.034);ivDoor.add(keySlot);
+
 ivDoor.position.set(iv.x,iv.y,iv.z+0.45);
 reg(ivDoor,{name:'Invertor Front Cover',type:'Sealed Cover Panel',mat:'Aluminum + IP65 Silicone Gasket',func:'Service access — 4× captive M5 screws, integrated cable duct',group:'i',isFront:true,eo:new THREE.Vector3(0,0,3)});
 

@@ -449,5 +449,8 @@ function App(){const[view,setView]=useState("wizard");const[config,setConfig]=us
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
   </script>
+<!-- Solar Tracking -->
+<script src="js/consent-banner.js"></script>
+<script>if(localStorage.getItem("solar_consent")){var _ts=document.createElement("script");_ts.src="js/tracker.js";document.body.appendChild(_ts);}</script>
 </body>
 </html>

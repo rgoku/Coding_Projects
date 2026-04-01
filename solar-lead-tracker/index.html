@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solar Lead Analytics — Blueprint</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',system-ui,sans-serif; background:#060d16; color:#fff; overflow:hidden; height:100vh; }
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:#0a1220; }
+  ::-webkit-scrollbar-thumb { background:#1e2a3a; border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover { background:#2a3a4a; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+const tabs = [
+  { id: "overview", label: "Overview", icon: "\u25C8" },
+  { id: "backend", label: "Backend", icon: "\u2B21" },
+  { id: "database", label: "Database", icon: "\u25C9" },
+  { id: "frontend", label: "Tracking Script", icon: "\u25CE" },
+  { id: "modal", label: "Lead Modal", icon: "\u25C7" },
+  { id: "dashboard", label: "Dashboard UI", icon: "\u25A6" },
+  { id: "deployment", label: "Deployment", icon: "\u2B22" },
+];
+
+const Badge = ({ children, color = "orange" }) => {
+  const colors = {
+    orange: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    green: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    blue: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    red: "bg-red-500/10 text-red-400 border-red-500/20",
+    purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${colors[color]}`}>
+      {children}
+    </span>
+  );
+};
+
+const CodeBlock = ({ code, filename }) => {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard?.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+  return (
+    <div className="rounded-xl overflow-hidden border border-[#1e2a3a] shadow-2xl">
+      {filename && (
+        <div className="flex items-center justify-between px-4 py-2.5 bg-[#0d1520] border-b border-[#1e2a3a]">
+          <div className="flex items-center gap-2.5">
+            <div className="flex gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+            </div>
+            <span className="text-xs text-slate-400 font-mono">{filename}</span>
+          </div>
+          <button onClick={copy} className="text-xs text-slate-500 hover:text-slate-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">
+            {copied ? "\u2713 Copied" : "Copy"}
+          </button>
+        </div>
+      )}
+      <pre className="bg-[#080f18] text-[#a8c0d6] p-5 overflow-x-auto text-[11.5px] leading-relaxed font-mono">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+};
+
+const SectionTitle = ({ children, sub }) => (
+  <div className="mb-5">
+    <h3 className="text-base font-semibold text-white tracking-tight">{children}</h3>
+    {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+  </div>
+);
+
+const Card = ({ children, className = "" }) => (
+  <div className={`bg-[#0d1520] border border-[#1a2535] rounded-2xl p-6 ${className}`}>{children}</div>
+);
+
+// TAB CONTENT
+
+const OverviewTab = () => (
+  <div className="space-y-8">
+    <div className="relative rounded-2xl overflow-hidden border border-[#1a2535] bg-[#080f18] p-8">
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-blue-500/5 pointer-events-none" />
+      <div className="relative">
+        <div className="flex items-center gap-2 mb-3">
+          <Badge color="orange">v1.0</Badge>
+          <Badge color="green">Production Ready</Badge>
+          <Badge color="blue">Open Source</Badge>
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Solar Lead Analytics System</h2>
+        <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">
+          A full-stack visitor tracking and lead intelligence platform built for solar education companies.
+          Captures engagement signals, scores intent, and surfaces your hottest prospects — automatically.
+        </p>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-3 gap-3">
+      {[
+        { icon: "\u26A1", label: "Backend", val: "FastAPI + PostgreSQL", sub: "Hosted on Render" },
+        { icon: "\uD83C\uDF10", label: "Frontend", val: "Vanilla JS", sub: "GitHub Pages compatible" },
+        { icon: "\uD83D\uDCCA", label: "Dashboard", val: "React Admin UI", sub: "Deployed on Vercel" },
+        { icon: "\uD83D\uDD25", label: "Lead Scoring", val: "Intent-based", sub: "HOT / WARM / COLD" },
+        { icon: "\uD83D\uDD12", label: "Privacy", val: "GDPR Consent", sub: "Cookie banner built-in" },
+        { icon: "\uD83D\uDE80", label: "Deploy Time", val: "~15 minutes", sub: "End-to-end setup" },
+      ].map(c => (
+        <Card key={c.label} className="flex items-start gap-3 p-4">
+          <span className="text-xl mt-0.5">{c.icon}</span>
+          <div>
+            <div className="text-xs text-slate-500 uppercase tracking-widest mb-0.5">{c.label}</div>
+            <div className="text-sm font-semibold text-white">{c.val}</div>
+            <div className="text-xs text-slate-500 mt-0.5">{c.sub}</div>
+          </div>
+        </Card>
+      ))}
+    </div>
+
+    <Card>
+      <SectionTitle sub="How data flows from visitor to your dashboard">System Architecture</SectionTitle>
+      <div className="font-mono text-xs text-slate-400 leading-7 bg-[#080f18] rounded-xl p-5 border border-[#1a2535]">
+        <div className="text-orange-400/80 font-semibold">{"\u250C\u2500 FRONTEND  (GitHub Pages) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510"}</div>
+        <div className="pl-3">{"\u2502  "}<span className="text-sky-400">tracker.js</span>{"       \u2192 session_id \u00B7 pageviews \u00B7 heartbeat    \u2502"}</div>
+        <div className="pl-3">{"\u2502  "}<span className="text-sky-400">lead-modal.js</span>{"   \u2192 premium form \u00B7 session link           \u2502"}</div>
+        <div className="pl-3">{"\u2502  "}<span className="text-sky-400">consent-banner.js</span>{"\u2192 GDPR / cookie opt-in                 \u2502"}</div>
+        <div className="text-orange-400/80 font-semibold">{"\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"}</div>
+        <div className="text-center text-slate-600 my-1">{"\u2195  HTTPS REST  (JSON)"}</div>
+        <div className="text-orange-400/80 font-semibold">{"\u250C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25BC\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510"}</div>
+        <div className="pl-3">{"\u2502  "}<span className="text-emerald-400">FastAPI</span>{"  (Render.com)                                  \u2502"}</div>
+        <div className="pl-3">{"\u2502  POST /track/session/start|end  \u00B7  POST /track/pageview  \u2502"}</div>
+        <div className="pl-3">{"\u2502  POST /lead/submit              \u00B7  GET  /admin/*         \u2502"}</div>
+        <div className="text-orange-400/80 font-semibold">{"\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"}</div>
+        <div className="flex justify-around text-slate-600 mt-1">
+          <span className="text-slate-400">PostgreSQL</span>
+          <span className="text-slate-600">{"\u00B7 \u00B7 \u00B7"}</span>
+          <span className="text-slate-400">Redis (optional)</span>
+        </div>
+      </div>
+    </Card>
+
+    <Card>
+      <SectionTitle sub="Leads are automatically scored on session close">Lead Scoring Model</SectionTitle>
+      <div className="space-y-3">
+        {[
+          { label: "HOT", emoji: "\uD83D\uDD25", desc: "Used solar designer + 3+ min on site + submitted form", pts: "75\u2013100 pts", bg: "border-red-500/20 bg-red-500/5", t: "text-red-400" },
+          { label: "WARM", emoji: "\u2668\uFE0F", desc: "60+ sec + 3 pages viewed, or submitted the form", pts: "40\u201374 pts", bg: "border-orange-500/20 bg-orange-500/5", t: "text-orange-400" },
+          { label: "COLD", emoji: "\u2744\uFE0F", desc: "Under 30 seconds, 1\u20132 pages, no tool interaction", pts: "0\u201339 pts", bg: "border-blue-500/20 bg-blue-500/5", t: "text-blue-400" },
+        ].map(s => (
+          <div key={s.label} className={`flex items-center justify-between rounded-xl px-5 py-4 border ${s.bg}`}>
+            <div className="flex items-center gap-3">
+              <span className="text-xl">{s.emoji}</span>
+              <div>
+                <span className={`text-sm font-bold ${s.t}`}>{s.label}</span>
+                <p className="text-xs text-slate-400 mt-0.5">{s.desc}</p>
+              </div>
+            </div>
+            <Badge color={s.label === "HOT" ? "red" : s.label === "WARM" ? "orange" : "blue"}>{s.pts}</Badge>
+          </div>
+        ))}
+      </div>
+    </Card>
+  </div>
+);
+
+const BackendTab = () => (
+  <div className="space-y-8">
+    <Card>
+      <SectionTitle sub="Directory layout for the FastAPI project">Project Structure</SectionTitle>
+      <CodeBlock filename="terminal" code={`solar-tracker-api/
+\u251C\u2500\u2500 main.py              # FastAPI app \u00B7 CORS \u00B7 rate limiting
+\u251C\u2500\u2500 database.py          # SQLAlchemy engine + session factory
+\u251C\u2500\u2500 models.py            # ORM table definitions
+\u251C\u2500\u2500 schemas.py           # Pydantic request / response models
+\u251C\u2500\u2500 routers/
+\u2502   \u251C\u2500\u2500 tracking.py      # POST /track/*
+\u2502   \u251C\u2500\u2500 leads.py         # POST /lead/submit
+\u2502   \u2514\u2500\u2500 admin.py         # GET  /admin/*
+\u251C\u2500\u2500 services/
+\u2502   \u251C\u2500\u2500 geolocation.py   # IP \u2192 country / city lookup
+\u2502   \u2514\u2500\u2500 scoring.py       # Intent scoring engine
+\u251C\u2500\u2500 requirements.txt
+\u2514\u2500\u2500 .env`} />
+    </Card>
+
+    <Card>
+      <SectionTitle sub="App entrypoint with CORS, rate limiting, and router registration">main.py</SectionTitle>
+      <CodeBlock filename="main.py" code={`from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from routers import tracking, leads, admin
+from database import engine, Base
+
+Base.metadata.create_all(bind=engine)
+
+limiter = Limiter(key_func=get_remote_address)
+app = FastAPI(title="Solar Lead Tracker API", version="1.0.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://rgoku.github.io",
+        "http://localhost:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(tracking.router, prefix="/track",  tags=["Tracking"])
+app.include_router(leads.router,    prefix="/lead",   tags=["Leads"])
+app.include_router(admin.router,    prefix="/admin",  tags=["Admin"])
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}`} />
+    </Card>
+
+    <Card>
+      <SectionTitle sub="SQLAlchemy ORM models for all three tables">models.py</SectionTitle>
+      <CodeBlock filename="models.py" code={`from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Text, SmallInteger
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+from database import Base
+import uuid
+from datetime import datetime
+
+class Session(Base):
+    __tablename__ = "sessions"
+    id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ip_address       = Column(String(45))
+    device           = Column(String(20))        # mobile | tablet | desktop
+    user_agent       = Column(Text)
+    referrer         = Column(Text)
+    country          = Column(String(100))
+    city             = Column(String(100))
+    region           = Column(String(100))
+    start_time       = Column(DateTime, default=datetime.utcnow)
+    end_time         = Column(DateTime, nullable=True)
+    duration_seconds = Column(Float, nullable=True)
+    pages_viewed     = Column(Integer, default=0)
+    used_designer    = Column(SmallInteger, default=0)
+    consent_given    = Column(SmallInteger, default=0)
+    pageviews        = relationship("PageView", back_populates="session")
+    lead             = relationship("Lead", back_populates="session", uselist=False)
+
+class PageView(Base):
+    __tablename__ = "pageviews"
+    id           = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id   = Column(UUID(as_uuid=True), ForeignKey("sessions.id"))
+    page_url     = Column(Text)
+    page_title   = Column(String(255))
+    timestamp    = Column(DateTime, default=datetime.utcnow)
+    time_on_page = Column(Float, nullable=True)
+    session      = relationship("Session", back_populates="pageviews")
+
+class Lead(Base):
+    __tablename__ = "leads"
+    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id  = Column(UUID(as_uuid=True), ForeignKey("sessions.id"))
+    first_name  = Column(String(100))
+    last_name   = Column(String(100))
+    email       = Column(String(255), unique=True, index=True)
+    company     = Column(String(255), nullable=True)
+    score       = Column(Integer, default=0)
+    score_label = Column(String(10))            # HOT | WARM | COLD
+    created_at  = Column(DateTime, default=datetime.utcnow)
+    session     = relationship("Session", back_populates="lead")`} />
+    </Card>
+
+    <Card>
+      <SectionTitle sub="Session start, pageview, and session end endpoints">routers/tracking.py</SectionTitle>
+      <CodeBlock filename="routers/tracking.py" code={`from fastapi import APIRouter, Depends, Request
+from sqlalchemy.orm import Session as DBSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from database import get_db
+from models import Session, PageView
+from schemas import SessionStartRequest, PageViewRequest, SessionEndRequest
+from services.geolocation import get_location
+import user_agents
+
+router  = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
+
+@router.post("/session/start")
+@limiter.limit("30/minute")
+async def start_session(req: Request, body: SessionStartRequest,
+                        db: DBSession = Depends(get_db)):
+    ip  = req.headers.get("X-Forwarded-For", req.client.host).split(",")[0].strip()
+    ua  = user_agents.parse(body.user_agent or "")
+    dev = "mobile" if ua.is_mobile else ("tablet" if ua.is_tablet else "desktop")
+    loc = await get_location(ip)
+
+    session = Session(
+        id            = body.session_id,
+        ip_address    = ip,
+        device        = dev,
+        user_agent    = body.user_agent,
+        referrer      = body.referrer,
+        country       = loc.get("country"),
+        city          = loc.get("city"),
+        region        = loc.get("region"),
+        consent_given = int(body.consent_given),
+    )
+    db.add(session); db.commit()
+    return {"status": "ok", "session_id": str(session.id)}
+
+@router.post("/pageview")
+@limiter.limit("60/minute")
+async def track_pageview(req: Request, body: PageViewRequest,
+                         db: DBSession = Depends(get_db)):
+    pv = PageView(
+        session_id   = body.session_id,
+        page_url     = body.page_url[:500],
+        page_title   = (body.page_title or "")[:255],
+        time_on_page = body.time_on_page,
+    )
+    db.add(pv)
+    s = db.query(Session).filter(Session.id == body.session_id).first()
+    if s:
+        s.pages_viewed = (s.pages_viewed or 0) + 1
+        if "designer" in body.page_url.lower() or body.used_designer:
+            s.used_designer = 1
+    db.commit()
+    return {"status": "ok"}
+
+@router.post("/session/end")
+@limiter.limit("30/minute")
+async def end_session(req: Request, body: SessionEndRequest,
+                      db: DBSession = Depends(get_db)):
+    from datetime import datetime
+    s = db.query(Session).filter(Session.id == body.session_id).first()
+    if s:
+        s.end_time         = datetime.utcnow()
+        s.duration_seconds = body.duration_seconds
+        db.commit()
+    return {"status": "ok"}`} />
+    </Card>
+
+    <Card>
+      <SectionTitle sub="Lead submission with deduplication, sanitization, and scoring">routers/leads.py</SectionTitle>
+      <CodeBlock filename="routers/leads.py" code={`from fastapi import APIRouter, Depends, Request, HTTPException
+from sqlalchemy.orm import Session as DBSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from database import get_db
+from models import Lead, Session
+from schemas import LeadSubmitRequest
+from services.scoring import calculate_score
+import bleach, re
+
+router  = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
+
+def sanitize(val):     return bleach.clean(val.strip()) if val else None
+def valid_email(e):    return bool(re.match(r'^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$', e))
+
+@router.post("/submit")
+@limiter.limit("5/minute")
+async def submit_lead(req: Request, body: LeadSubmitRequest,
+                      db: DBSession = Depends(get_db)):
+    if not valid_email(body.email):
+        raise HTTPException(400, "Invalid email address")
+
+    existing = db.query(Lead).filter(Lead.email == body.email.lower()).first()
+    if existing:
+        return {"status": "exists", "lead_id": str(existing.id)}
+
+    session        = db.query(Session).filter(Session.id == body.session_id).first()
+    score, label   = calculate_score(session)
+
+    lead = Lead(
+        session_id  = body.session_id,
+        first_name  = sanitize(body.first_name),
+        last_name   = sanitize(body.last_name),
+        email       = sanitize(body.email.lower()),
+        company     = sanitize(body.company),
+        score       = score,
+        score_label = label,
+    )
+    db.add(lead); db.commit()
+    return {"status": "ok", "lead_id": str(lead.id), "score": score, "label": label}`} />
+    </Card>
+
+    <Card>
+      <SectionTitle sub="Point-based scoring engine">services/scoring.py</SectionTitle>
+      <CodeBlock filename="services/scoring.py" code={`def calculate_score(session) -> tuple[int, str]:
+    if not session:
+        return 10, "COLD"
+
+    score    = 0
+    duration = session.duration_seconds or 0
+    pages    = session.pages_viewed     or 0
+    designer = bool(session.used_designer)
+
+    # Time on site
+    if   duration >= 180: score += 35   # 3+ min
+    elif duration >=  60: score += 20   # 1-3 min
+    elif duration >=  30: score += 10   # 30-60 sec
+
+    # Pages viewed
+    if   pages >= 5: score += 25
+    elif pages >= 3: score += 15
+    elif pages >= 2: score +=  8
+
+    # Used solar designer tool
+    if designer: score += 30
+
+    # Form submitted (called only on submission)
+    score += 10
+
+    label = "HOT" if score >= 70 else ("WARM" if score >= 40 else "COLD")
+    return min(score, 100), label`} />
+    </Card>
+
+    <Card>
+      <SectionTitle sub="requirements.txt">Dependencies</SectionTitle>
+      <CodeBlock filename="requirements.txt" code={`fastapi==0.111.0
+uvicorn[standard]==0.29.0
+sqlalchemy==2.0.30
+psycopg2-binary==2.9.9
+python-dotenv==1.0.1
+httpx==0.27.0
+slowapi==0.1.9
+bleach==6.1.0
+user-agents==2.2.0
+alembic==1.13.1`} />
+    </Card>
+  </div>
+);
+
+const DatabaseTab = () => (
+  <div className="space-y-6">
+    <Card>
+      <SectionTitle sub="Run once against your Render PostgreSQL instance">schema.sql</SectionTitle>
+      <CodeBlock filename="schema.sql" code={`-- Solar Tracker \u00B7 PostgreSQL Schema
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Sessions
+CREATE TABLE sessions (
+  id               UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+  ip_address       VARCHAR(45),
+  device           VARCHAR(20)  CHECK (device IN ('mobile','tablet','desktop')),
+  user_agent       TEXT,
+  referrer         TEXT,
+  country          VARCHAR(100),
+  city             VARCHAR(100),
+  region           VARCHAR(100),
+  start_time       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  end_time         TIMESTAMPTZ,
+  duration_seconds FLOAT,
+  pages_viewed     INTEGER      DEFAULT 0,
+  used_designer    SMALLINT     DEFAULT 0,
+  consent_given    SMALLINT     DEFAULT 0,
+  created_at       TIMESTAMPTZ  DEFAULT NOW()
+);
+
+-- Page Views
+CREATE TABLE pageviews (
+  id           UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  session_id   UUID        REFERENCES sessions(id) ON DELETE CASCADE,
+  page_url     TEXT        NOT NULL,
+  page_title   VARCHAR(255),
+  timestamp    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  time_on_page FLOAT
+);
+
+-- Leads
+CREATE TABLE leads (
+  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  session_id  UUID        REFERENCES sessions(id) ON DELETE SET NULL,
+  first_name  VARCHAR(100),
+  last_name   VARCHAR(100),
+  email       VARCHAR(255) NOT NULL UNIQUE,
+  company     VARCHAR(255),
+  score       INTEGER      DEFAULT 0 CHECK (score BETWEEN 0 AND 100),
+  score_label VARCHAR(10)  CHECK (score_label IN ('HOT','WARM','COLD')),
+  created_at  TIMESTAMPTZ  DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX idx_sessions_start    ON sessions  (start_time DESC);
+CREATE INDEX idx_pageviews_session ON pageviews (session_id);
+CREATE INDEX idx_pageviews_url     ON pageviews (page_url);
+CREATE INDEX idx_leads_email       ON leads     (email);
+CREATE INDEX idx_leads_score       ON leads     (score DESC);
+CREATE INDEX idx_leads_created     ON leads     (created_at DESC);`} />
+    </Card>
+  </div>
+);
+
+const FrontendTab = () => (
+  <div className="space-y-6">
+    <Card>
+      <SectionTitle sub="Drop into every page's <head> \u2014 zero dependencies">tracker.js</SectionTitle>
+      <CodeBlock filename="tracker.js" code={`/* SolarTracker v1.0 \u2014 Plug-and-play analytics script
+   Usage: <script src="/js/tracker.js"
+                  data-api="https://your-api.render.com"><\/script>
+*/
+(function () {
+  const API = document.currentScript?.getAttribute("data-api")
+            || "https://your-api.render.com";
+  const HEARTBEAT_MS = 8000;
+
+  // UUID helper
+  const uuid = () => crypto.randomUUID
+    ? crypto.randomUUID()
+    : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+
+  // Fire-and-forget POST
+  const post = (path, data) => {
+    if (!window.__solarConsent) return;
+    return fetch(API + path, {
+      method:    "POST",
+      headers:   { "Content-Type": "application/json" },
+      body:      JSON.stringify(data),
+      keepalive: true,
+    }).catch(() => {});
+  };
+
+  // Session ID (tab-scoped)
+  const KEY = "solar_sid";
+  let sid = sessionStorage.getItem(KEY);
+  if (!sid) { sid = uuid(); sessionStorage.setItem(KEY, sid); }
+  window.__solarSessionId = sid;
+
+  // Designer-use flag
+  const markDesigner = () => {
+    sessionStorage.setItem("solar_designer", "1");
+    window.__solarDesignerUsed = true;
+  };
+  document.addEventListener("click", e => {
+    if (e.target?.closest?.("[data-solar-designer]")) markDesigner();
+  });
+
+  // Core tracking calls
+  const pageStart = Date.now();
+
+  const startSession = () => post("/track/session/start", {
+    session_id:    sid,
+    user_agent:    navigator.userAgent,
+    referrer:      document.referrer || null,
+    consent_given: true,
+  });
+
+  const trackPageView = (timeOnPrev) => post("/track/pageview", {
+    session_id:    sid,
+    page_url:      location.href,
+    page_title:    document.title,
+    time_on_page:  timeOnPrev || null,
+    used_designer: !!sessionStorage.getItem("solar_designer"),
+  });
+
+  const endSession = () => post("/track/session/end", {
+    session_id:      sid,
+    duration_seconds: (Date.now() - pageStart) / 1000,
+  });
+
+  // Heartbeat
+  let timer;
+  const startHeartbeat = () => {
+    timer = setInterval(() => post("/track/session/end", {
+      session_id:      sid,
+      duration_seconds: (Date.now() - pageStart) / 1000,
+    }), HEARTBEAT_MS);
+  };
+
+  // Lead form triggers
+  let triggered = false;
+  const showForm = () => {
+    if (triggered) return;
+    triggered = true;
+    window.dispatchEvent(new CustomEvent("solar:showLeadForm"));
+  };
+  setTimeout(showForm, 15000);  // after 15 s
+  document.addEventListener("click", e => {
+    if (e.target?.closest?.("[data-solar-cta]")) showForm();
+  });
+
+  // Boot
+  window.__solarConsent = !!localStorage.getItem("solar_consent");
+
+  const boot = () => { startSession(); trackPageView(); startHeartbeat(); };
+  if (window.__solarConsent) { boot(); }
+  else { window.addEventListener("solar:consentGiven", boot, { once: true }); }
+
+  window.addEventListener("beforeunload", () => { clearInterval(timer); endSession(); });
+  window.solarTracker = { showForm, markDesigner };
+})();`} />
+    </Card>
+
+    <Card>
+      <SectionTitle sub="GDPR-compliant consent banner \u2014 no tracking fires until accepted">consent-banner.js</SectionTitle>
+      <CodeBlock filename="consent-banner.js" code={`(function () {
+  if (localStorage.getItem("solar_consent")) return;
+
+  const css = \`
+    #sb { position:fixed;bottom:0;left:0;right:0;z-index:99999;
+          background:#080f18;border-top:1px solid #1a2535;
+          padding:14px 24px;display:flex;align-items:center;
+          justify-content:space-between;font-family:system-ui;font-size:13px;
+          color:#94a3b8;box-shadow:0 -8px 32px rgba(0,0,0,.5); }
+    #sb a   { color:#f97316;text-decoration:none; }
+    #sb-yes { background:#f97316;color:#fff;border:none;border-radius:8px;
+              padding:8px 20px;cursor:pointer;font-weight:600;font-size:13px;
+              transition:background .2s; }
+    #sb-yes:hover { background:#ea580c; }
+    #sb-no  { background:transparent;color:#64748b;border:1px solid #1e2a3a;
+              border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;
+              margin-left:8px;transition:color .2s; }
+    #sb-no:hover { color:#94a3b8; }
+  \`;
+
+  const style = document.createElement("style");
+  style.textContent = css;
+  document.head.appendChild(style);
+
+  const el = document.createElement("div");
+  el.id = "sb";
+  el.innerHTML = \`
+    <span>
+      We use cookies to understand how visitors engage with our platform.
+      <a href="/privacy" style="margin-left:6px;">Privacy Policy</a>
+    </span>
+    <div style="display:flex;flex-shrink:0;margin-left:20px;">
+      <button id="sb-yes">Accept</button>
+      <button id="sb-no">Decline</button>
+    </div>\`;
+  document.body.appendChild(el);
+
+  document.getElementById("sb-yes").onclick = () => {
+    localStorage.setItem("solar_consent", "1");
+    el.remove();
+    window.dispatchEvent(new CustomEvent("solar:consentGiven"));
+  };
+  document.getElementById("sb-no").onclick = () => el.remove();
+})();`} />
+    </Card>
+  </div>
+);
+
+const ModalTab = () => (
+  <div className="space-y-6">
+    <Card>
+      <SectionTitle sub="Premium animated lead capture modal \u2014 listens for solar:showLeadForm event">lead-modal.js</SectionTitle>
+      <CodeBlock filename="lead-modal.js" code={`(function () {
+  const API = window.__solarAPI || "https://your-api.render.com";
+  let injected = false;
+
+  const injectModal = () => {
+    if (injected) return;
+    injected = true;
+
+    // Styles
+    const s = document.createElement("style");
+    s.textContent = \`
+      #sl-ov {
+        position:fixed;inset:0;z-index:999999;display:flex;
+        align-items:center;justify-content:center;
+        background:rgba(0,0,0,.72);backdrop-filter:blur(8px);
+        opacity:0;transition:opacity .3s ease;
+      }
+      #sl-ov.on { opacity:1; }
+      #sl-m {
+        background:linear-gradient(160deg,#0d1520 0%,#111c2e 100%);
+        border:1px solid #1e2d42;border-radius:20px;
+        padding:40px;max-width:460px;width:calc(100% - 40px);
+        transform:translateY(28px) scale(.96);
+        transition:transform .38s cubic-bezier(.34,1.56,.64,1);
+        box-shadow:0 32px 80px rgba(0,0,0,.7),
+                   0 0 0 1px rgba(249,115,22,.12),
+                   inset 0 1px 0 rgba(255,255,255,.04);
+        position:relative;
+      }
+      #sl-ov.on #sl-m { transform:translateY(0) scale(1); }
+      #sl-chip {
+        display:inline-flex;align-items:center;gap:6px;
+        background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.2);
+        border-radius:99px;padding:4px 12px;margin-bottom:18px;
+        font-size:11px;color:#fb923c;font-weight:600;letter-spacing:.04em;
+      }
+      #sl-m h2 {
+        color:#f1f5f9;font-size:22px;font-weight:800;margin:0 0 6px;
+        letter-spacing:-.02em;line-height:1.2;
+      }
+      #sl-m .sub { color:#64748b;font-size:13px;margin:0 0 28px;line-height:1.5; }
+      .sl-row { display:flex;gap:12px; }
+      .sl-f { display:flex;flex-direction:column;gap:5px;margin-bottom:14px;flex:1; }
+      .sl-f label {
+        color:#475569;font-size:10px;font-weight:700;
+        letter-spacing:.08em;text-transform:uppercase;
+      }
+      .sl-f input {
+        background:#080f18;border:1px solid #1e2d42;border-radius:10px;
+        padding:11px 14px;color:#e2e8f0;font-size:14px;outline:none;
+        transition:border-color .2s,box-shadow .2s;box-sizing:border-box;width:100%;
+      }
+      .sl-f input:focus {
+        border-color:#f97316;
+        box-shadow:0 0 0 3px rgba(249,115,22,.12),
+                   inset 0 1px 0 rgba(249,115,22,.05);
+      }
+      .sl-f input.err { border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.1); }
+      #sl-btn {
+        width:100%;padding:13px;margin-top:6px;
+        background:linear-gradient(135deg,#f97316 0%,#ea580c 100%);
+        color:#fff;border:none;border-radius:12px;
+        font-size:15px;font-weight:700;cursor:pointer;
+        letter-spacing:.01em;
+        transition:transform .15s,box-shadow .2s,opacity .2s;
+        box-shadow:0 4px 24px rgba(249,115,22,.35);
+      }
+      #sl-btn:hover:not(:disabled) {
+        transform:translateY(-1px);
+        box-shadow:0 8px 32px rgba(249,115,22,.45);
+      }
+      #sl-btn:active { transform:translateY(0); }
+      #sl-btn:disabled { opacity:.55;cursor:not-allowed;transform:none;box-shadow:none; }
+      #sl-x {
+        position:absolute;top:16px;right:16px;
+        background:rgba(255,255,255,.04);border:1px solid #1e2d42;
+        color:#475569;font-size:14px;cursor:pointer;
+        width:30px;height:30px;border-radius:8px;
+        display:flex;align-items:center;justify-content:center;
+        transition:background .2s,color .2s;
+      }
+      #sl-x:hover { background:rgba(255,255,255,.08);color:#94a3b8; }
+      .sl-ok { text-align:center;padding:16px 0; }
+      .sl-ok .ck { font-size:44px;margin-bottom:12px;display:block; }
+      .sl-ok h3 { color:#f1f5f9;font-size:20px;font-weight:700;margin:0 0 6px; }
+      .sl-ok p  { color:#64748b;font-size:13px;line-height:1.6; }
+      .sl-legal { text-align:center;font-size:11px;color:#334155;margin-top:12px; }
+    \`;
+    document.head.appendChild(s);
+
+    // Markup
+    const ov = document.createElement("div");
+    ov.id = "sl-ov";
+    ov.innerHTML = \`
+      <div id="sl-m" role="dialog" aria-modal="true">
+        <button id="sl-x" aria-label="Close">\u2715</button>
+        <div id="sl-chip">\u2600\uFE0F FREE ANALYSIS</div>
+        <h2>Discover Your Solar<br>Savings Potential</h2>
+        <p class="sub">Join 10,000+ property owners who've mapped their solar opportunity. Free, instant, no commitment.</p>
+        <div id="sl-body">
+          <div class="sl-row">
+            <div class="sl-f"><label>First Name</label>
+              <input id="sl-fn" type="text" placeholder="Jane" autocomplete="given-name"></div>
+            <div class="sl-f"><label>Last Name</label>
+              <input id="sl-ln" type="text" placeholder="Smith" autocomplete="family-name"></div>
+          </div>
+          <div class="sl-f"><label>Email Address *</label>
+            <input id="sl-em" type="email" placeholder="jane@company.com" autocomplete="email"></div>
+          <div class="sl-f"><label>Company <span style="opacity:.4;font-weight:400;text-transform:none">(optional)</span></label>
+            <input id="sl-co" type="text" placeholder="Acme Corp" autocomplete="organization"></div>
+          <button id="sl-btn">Get My Free Analysis \u2192</button>
+          <p class="sl-legal">No spam \u00B7 Unsubscribe anytime \u00B7 Data protected</p>
+        </div>
+      </div>\`;
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => ov.classList.add("on"));
+
+    const close = () => { ov.classList.remove("on"); setTimeout(() => ov.remove(), 320); };
+    document.getElementById("sl-x").onclick = close;
+    ov.onclick = e => { if (e.target === ov) close(); };
+    document.addEventListener("keydown", e => { if (e.key === "Escape") close(); }, { once: true });
+
+    // Submit
+    document.getElementById("sl-btn").onclick = async () => {
+      const em  = document.getElementById("sl-em");
+      const val = em.value.trim();
+      if (!val || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(val)) {
+        em.classList.add("err"); em.focus(); return;
+      }
+      em.classList.remove("err");
+      const btn = document.getElementById("sl-btn");
+      btn.disabled = true; btn.textContent = "Submitting\u2026";
+
+      try {
+        await fetch(API + "/lead/submit", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: window.__solarSessionId,
+            first_name: document.getElementById("sl-fn").value.trim(),
+            last_name:  document.getElementById("sl-ln").value.trim(),
+            email:      val,
+            company:    document.getElementById("sl-co").value.trim() || null,
+          }),
+        });
+        document.getElementById("sl-body").innerHTML = \`
+          <div class="sl-ok">
+            <span class="ck">\u2705</span>
+            <h3>You're all set!</h3>
+            <p>Your personalized solar analysis is on its way to<br>
+               <strong style="color:#f97316">\${val}</strong>.</p>
+          </div>\`;
+        setTimeout(close, 4500);
+      } catch {
+        btn.disabled = false; btn.textContent = "Get My Free Analysis \u2192";
+      }
+    };
+  };
+
+  window.addEventListener("solar:showLeadForm", injectModal);
+})();`} />
+    </Card>
+  </div>
+);
+
+const DashboardTab = () => {
+  const leads = [
+    { name: "Sarah Chen",  email: "sarah@solarcorp.com", company: "SolarCorp", score: 91, label: "HOT",  date: "Apr 1" },
+    { name: "Mike Torres", email: "mike.t@gmail.com",    company: "\u2014",    score: 62, label: "WARM", date: "Apr 1" },
+    { name: "Lisa Park",   email: "l.park@suntech.io",   company: "SunTech",   score: 85, label: "HOT",  date: "Mar 31" },
+    { name: "James Wu",    email: "jwu@email.com",       company: "\u2014",    score: 24, label: "COLD", date: "Mar 31" },
+    { name: "Ana Reyes",   email: "ana@greenenergy.com", company: "GreenCo",   score: 77, label: "HOT",  date: "Mar 30" },
+  ];
+  const labelStyle = l =>
+    l === "HOT"  ? "bg-red-500/10 text-red-400 border-red-500/20" :
+    l === "WARM" ? "bg-orange-500/10 text-orange-400 border-orange-500/20" :
+                   "bg-blue-500/10 text-blue-400 border-blue-500/20";
+  const barColor = l => l === "HOT" ? "bg-red-500" : l === "WARM" ? "bg-orange-500" : "bg-blue-500";
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-[#1a2535] overflow-hidden">
+        <div className="bg-[#060d16] px-5 py-3 border-b border-[#1a2535] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"/><span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"/><span className="w-2.5 h-2.5 rounded-full bg-[#28c840]"/></div>
+            <span className="text-xs text-slate-500 ml-1">Admin Dashboard \u2014 Live Preview</span>
+          </div>
+          <Badge color="green">Live</Badge>
+        </div>
+        <div className="bg-[#080f18] p-6 space-y-6">
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: "Total Visitors",  val: "1,842", delta: "+12%", color: "text-sky-400",    icon: "\uD83D\uDC65" },
+              { label: "Leads Captured",  val: "247",   delta: "+8%",  color: "text-emerald-400",icon: "\u2709\uFE0F" },
+              { label: "Conversion Rate", val: "13.4%", delta: "+2.1%",color: "text-orange-400", icon: "\uD83D\uDCC8" },
+              { label: "HOT Leads",       val: "41",    delta: "+5",   color: "text-red-400",    icon: "\uD83D\uDD25" },
+            ].map(s => (
+              <div key={s.label} className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-slate-500 uppercase tracking-widest">{s.label}</span>
+                  <span className="text-base">{s.icon}</span>
+                </div>
+                <div className={`text-2xl font-bold ${s.color}`}>{s.val}</div>
+                <div className="text-xs text-emerald-500 mt-1">{s.delta} this week</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#1a2535]">
+              <span className="text-sm font-semibold text-white">Recent Leads</span>
+              <button className="text-xs text-orange-400 border border-orange-500/20 bg-orange-500/5 px-3 py-1.5 rounded-lg hover:bg-orange-500/10 transition-colors">
+                Export CSV \u2193
+              </button>
+            </div>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#1a2535]">
+                  {["Name","Email","Company","Score","Label","Date"].map(h => (
+                    <th key={h} className="text-left px-5 py-2.5 text-slate-500 font-semibold uppercase tracking-widest text-[10px]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {leads.map((l,i) => (
+                  <tr key={i} className="border-b border-[#111c2e] hover:bg-white/[.02] transition-colors">
+                    <td className="px-5 py-3 text-slate-200 font-medium">{l.name}</td>
+                    <td className="px-5 py-3 text-slate-400">{l.email}</td>
+                    <td className="px-5 py-3 text-slate-500">{l.company}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 bg-[#1a2535] rounded-full h-1.5">
+                          <div className={`h-1.5 rounded-full ${barColor(l.label)}`} style={{width:`${l.score}%`}}/>
+                        </div>
+                        <span className="text-slate-300">{l.score}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${labelStyle(l.label)}`}>{l.label}</span>
+                    </td>
+                    <td className="px-5 py-3 text-slate-500">{l.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-5">
+            <div className="text-sm font-semibold text-white mb-4">Top Pages by Traffic</div>
+            <div className="space-y-3">
+              {[
+                { url: "/solar-designer", views: 642, pct: 100 },
+                { url: "/", views: 421, pct: 65 },
+                { url: "/calculator", views: 287, pct: 44 },
+                { url: "/pricing", views: 198, pct: 30 },
+              ].map(p => (
+                <div key={p.url} className="flex items-center gap-3">
+                  <div className="text-xs text-slate-400 w-36 truncate font-mono">{p.url}</div>
+                  <div className="flex-1 bg-[#1a2535] rounded-full h-1.5">
+                    <div className="bg-orange-500 h-1.5 rounded-full transition-all" style={{width:`${p.pct}%`}}/>
+                  </div>
+                  <div className="text-xs text-slate-400 w-8 text-right">{p.views}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Card>
+        <SectionTitle sub="Full React component for the admin dashboard">dashboard/src/App.jsx</SectionTitle>
+        <CodeBlock filename="src/App.jsx" code={`import { useEffect, useState } from "react";
+
+const API  = process.env.REACT_APP_API_URL || "https://your-api.render.com";
+const CHIP = l => l === "HOT"  ? "bg-red-500/10 text-red-400 border-red-500/20"    :
+                  l === "WARM" ? "bg-orange-500/10 text-orange-400 border-orange-500/20" :
+                                 "bg-blue-500/10 text-blue-400 border-blue-500/20";
+
+export default function App() {
+  const [stats, setStats] = useState(null);
+  const [leads, setLeads] = useState([]);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(API + "/admin/analytics").then(r => r.json()),
+      fetch(API + "/admin/leads").then(r => r.json()),
+    ]).then(([s, l]) => { setStats(s); setLeads(l); });
+  }, []);
+
+  if (!stats) return (
+    <div className="flex h-screen items-center justify-center bg-[#060d16] text-slate-400 text-sm">
+      Loading\u2026
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#060d16] text-white p-8 font-sans">
+      <div className="max-w-6xl mx-auto space-y-8">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">\u2600\uFE0F Solar Lead Analytics</h1>
+            <p className="text-xs text-slate-500 mt-0.5">Real-time visitor intelligence</p>
+          </div>
+          <button onClick={() => window.open(API + "/admin/leads/export")}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-colors">
+            Export CSV \u2193
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { k: "total_visitors",      label: "Visitors",       color: "text-sky-400"    },
+            { k: "total_leads",          label: "Leads",          color: "text-emerald-400"},
+            { k: "conversion_rate",      label: "Conversion %",   color: "text-orange-400" },
+            { k: "avg_session_duration", label: "Avg Duration (s)",color:"text-purple-400" },
+          ].map(s => (
+            <div key={s.k} className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
+              <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">{s.label}</div>
+              <div className={\\\`text-2xl font-bold \\\${s.color}\\\`}>{stats[s.k]}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Leads table */}
+        <div className="bg-[#0d1520] border border-[#1a2535] rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#1a2535] text-sm font-semibold">Recent Leads</div>
+          <table className="w-full text-sm">
+            <thead className="text-[10px] text-slate-500 uppercase tracking-widest border-b border-[#1a2535]">
+              <tr>{["Name","Email","Company","Score","Label","Date"].map(h => (
+                <th key={h} className="text-left px-6 py-3">{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {leads.map(l => (
+                <tr key={l.id} className="border-b border-[#111c2e] hover:bg-white/[.02]">
+                  <td className="px-6 py-3 font-medium">{l.first_name} {l.last_name}</td>
+                  <td className="px-6 py-3 text-slate-400">{l.email}</td>
+                  <td className="px-6 py-3 text-slate-500">{l.company || "\u2014"}</td>
+                  <td className="px-6 py-3">{l.score}/100</td>
+                  <td className="px-6 py-3">
+                    <span className={\\\`px-2 py-0.5 rounded-md text-[10px] font-bold border \\\${CHIP(l.score_label)}\\\`}>
+                      {l.score_label}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3 text-slate-500">
+                    {new Date(l.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  );
+}`} />
+      </Card>
+    </div>
+  );
+};
+
+const DeploymentTab = () => (
+  <div className="space-y-6">
+    <div className="grid grid-cols-3 gap-3 mb-2">
+      {[
+        { step: "01", title: "Push to GitHub", sub: "Backend repo \u2192 Render" },
+        { step: "02", title: "Add 3 Script Tags", sub: "Paste into your HTML" },
+        { step: "03", title: "Deploy Dashboard", sub: "Vercel one-command" },
+      ].map(s => (
+        <Card key={s.step} className="p-4">
+          <div className="text-2xl font-black text-orange-500/30 mb-1">{s.step}</div>
+          <div className="text-sm font-semibold text-white">{s.title}</div>
+          <div className="text-xs text-slate-500 mt-0.5">{s.sub}</div>
+        </Card>
+      ))}
+    </div>
+
+    <Card>
+      <SectionTitle sub="render.yaml \u2014 commit this to your repo root">Backend \u2192 Render.com</SectionTitle>
+      <CodeBlock filename="render.yaml" code={`services:
+  - type: web
+    name: solar-tracker-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: solar-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+
+databases:
+  - name: solar-db
+    databaseName: solartracker
+    user: solar`} />
+      <div className="mt-4 text-xs text-slate-500">After first deploy, run the schema migration from the Render Shell:</div>
+      <CodeBlock filename="Render Shell" code={`python -c "from database import engine, Base; from models import *; Base.metadata.create_all(engine)"`} />
+    </Card>
+
+    <Card>
+      <SectionTitle sub="Add to every HTML page on your GitHub Pages site">Frontend Integration</SectionTitle>
+      <CodeBlock filename="Your Solar Education Pages" code={`<!-- 1. Set your API base URL -->
+<script>window.__solarAPI = "https://solar-tracker-api.onrender.com";<\/script>
+
+<!-- 2. Consent banner (must load first) -->
+<script src="/js/consent-banner.js"><\/script>
+
+<!-- 3. Session + pageview tracker -->
+<script src="/js/tracker.js"
+        data-api="https://solar-tracker-api.onrender.com"><\/script>
+
+<!-- 4. Lead capture modal -->
+<script src="/js/lead-modal.js"><\/script>
+
+<!-- Tag your CTAs so the modal fires on click -->
+<button data-solar-cta class="btn-primary">
+  Start Designing \u2192
+</button>
+
+<!-- Tag your designer tool container -->
+<div data-solar-designer id="solar-calculator">
+  <!-- existing tool markup here -->
+</div>`} />
+    </Card>
+
+    <Card>
+      <SectionTitle sub="Deploy the React admin dashboard to Vercel in one command">Dashboard \u2192 Vercel</SectionTitle>
+      <CodeBlock filename="terminal" code={`# 1. Bootstrap the React project
+npx create-react-app solar-dashboard
+cd solar-dashboard
+
+# 2. Install Tailwind
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+
+# 3. Add your API URL
+echo "REACT_APP_API_URL=https://solar-tracker-api.onrender.com" > .env.local
+
+# 4. Copy src/App.jsx from the Dashboard UI tab above
+
+# 5. Ship it
+npx vercel --prod
+# \u2705 https://solar-dashboard.vercel.app`} />
+    </Card>
+
+    <Card>
+      <SectionTitle sub="Lock down /admin routes with an API key">Security Hardening</SectionTitle>
+      <CodeBlock filename="routers/admin.py" code={`import os
+from fastapi import Depends, HTTPException
+from fastapi.security.api_key import APIKeyHeader
+
+_header = APIKeyHeader(name="X-Admin-Key", auto_error=False)
+
+async def require_admin(key: str = Depends(_header)):
+    if key != os.getenv("ADMIN_API_KEY"):
+        raise HTTPException(403, "Forbidden")
+
+# Apply to every admin route:
+@router.get("/leads",     dependencies=[Depends(require_admin)])
+@router.get("/analytics", dependencies=[Depends(require_admin)])
+@router.get("/leads/export", dependencies=[Depends(require_admin)])`} />
+      <div className="mt-4 p-4 rounded-xl bg-[#080f18] border border-[#1a2535]">
+        <div className="text-xs text-slate-400 font-semibold mb-3 uppercase tracking-widest">Security checklist</div>
+        <div className="space-y-2">
+          {[
+            "CORS locked to your domains only",
+            "Rate limits on all write endpoints",
+            "Input sanitization via bleach",
+            "Email deduplication (no duplicates stored)",
+            "GDPR consent gate before any tracking fires",
+            "No passwords or payment data stored \u2014 email only",
+            "Admin routes protected by API key header",
+          ].map(t => (
+            <div key={t} className="flex items-center gap-2 text-xs text-slate-400">
+              <span className="text-emerald-500">{"\u2713"}</span> {t}
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  </div>
+);
+
+const CONTENT = {
+  overview:   OverviewTab,
+  backend:    BackendTab,
+  database:   DatabaseTab,
+  frontend:   FrontendTab,
+  modal:      ModalTab,
+  dashboard:  DashboardTab,
+  deployment: DeploymentTab,
+};
+
+function App() {
+  const [active, setActive] = useState("overview");
+  const Tab = CONTENT[active];
+
+  return (
+    <div style={{ fontFamily: "'Inter', 'system-ui', sans-serif" }}
+         className="min-h-screen bg-[#060d16] text-white">
+
+      {/* Top bar */}
+      <div className="border-b border-[#1a2535] bg-[#060d16] px-6 h-14 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-sm font-bold shadow-lg shadow-orange-500/20">{"\u2600"}</div>
+          <div>
+            <div className="text-sm font-bold tracking-tight">Solar Lead Analytics</div>
+            <div className="text-[10px] text-slate-500 -mt-0.5">Full-Stack Blueprint</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <a href="../solar-education/Ampacity_Renewables_Solar_Education.html"
+             className="text-xs text-slate-400 hover:text-orange-400 transition-colors px-3 py-1.5 rounded-lg border border-[#1a2535] hover:border-orange-500/30">
+            {"\u2190"} Back to Education
+          </a>
+          <Badge color="orange">v1.0</Badge>
+        </div>
+      </div>
+
+      <div className="flex h-[calc(100vh-56px)]">
+        {/* Sidebar */}
+        <div className="w-56 border-r border-[#1a2535] bg-[#080f18] py-4 px-3 flex-shrink-0 overflow-y-auto">
+          <div className="text-[10px] text-slate-500 uppercase tracking-widest px-3 mb-3 font-semibold">Sections</div>
+          <div className="space-y-1">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActive(tab.id)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all text-sm ${
+                  active === tab.id
+                    ? "bg-orange-500/10 text-orange-400 border border-orange-500/20 font-semibold"
+                    : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
+                }`}
+              >
+                <span className="text-base opacity-60">{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-8 px-3">
+            <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-3 font-semibold">Target Project</div>
+            <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-3">
+              <div className="text-xs font-semibold text-white mb-1">Ampacity Renewables</div>
+              <div className="text-[10px] text-slate-500">Solar Education Platform</div>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span className="text-[10px] text-emerald-400">Tracking Ready</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="max-w-4xl mx-auto">
+            <Tab />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

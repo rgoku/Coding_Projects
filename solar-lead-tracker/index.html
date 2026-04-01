@@ -24,13 +24,13 @@
 const { useState } = React;
 
 const tabs = [
-  { id: "overview", label: "Overview", icon: "\u25C8" },
-  { id: "backend", label: "Backend", icon: "\u2B21" },
-  { id: "database", label: "Database", icon: "\u25C9" },
-  { id: "frontend", label: "Tracking Script", icon: "\u25CE" },
-  { id: "modal", label: "Lead Modal", icon: "\u25C7" },
-  { id: "dashboard", label: "Dashboard UI", icon: "\u25A6" },
-  { id: "deployment", label: "Deployment", icon: "\u2B22" },
+  { id: "overview", label: "Overview", icon: "◈" },
+  { id: "backend", label: "Backend", icon: "⬡" },
+  { id: "database", label: "Database", icon: "◉" },
+  { id: "frontend", label: "Tracking Script", icon: "◎" },
+  { id: "modal", label: "Lead Modal", icon: "◇" },
+  { id: "dashboard", label: "Dashboard UI", icon: "▦" },
+  { id: "deployment", label: "Deployment", icon: "⬢" },
 ];
 
 const Badge = ({ children, color = "orange" }) => {
@@ -68,7 +68,7 @@ const CodeBlock = ({ code, filename }) => {
             <span className="text-xs text-slate-400 font-mono">{filename}</span>
           </div>
           <button onClick={copy} className="text-xs text-slate-500 hover:text-slate-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">
-            {copied ? "\u2713 Copied" : "Copy"}
+            {copied ? "✓ Copied" : "Copy"}
           </button>
         </div>
       )}
@@ -112,12 +112,12 @@ const OverviewTab = () => (
 
     <div className="grid grid-cols-3 gap-3">
       {[
-        { icon: "\u26A1", label: "Backend", val: "FastAPI + PostgreSQL", sub: "Hosted on Render" },
-        { icon: "\uD83C\uDF10", label: "Frontend", val: "Vanilla JS", sub: "GitHub Pages compatible" },
-        { icon: "\uD83D\uDCCA", label: "Dashboard", val: "React Admin UI", sub: "Deployed on Vercel" },
-        { icon: "\uD83D\uDD25", label: "Lead Scoring", val: "Intent-based", sub: "HOT / WARM / COLD" },
-        { icon: "\uD83D\uDD12", label: "Privacy", val: "GDPR Consent", sub: "Cookie banner built-in" },
-        { icon: "\uD83D\uDE80", label: "Deploy Time", val: "~15 minutes", sub: "End-to-end setup" },
+        { icon: "⚡", label: "Backend", val: "FastAPI + PostgreSQL", sub: "Hosted on Render" },
+        { icon: "🌐", label: "Frontend", val: "Vanilla JS", sub: "GitHub Pages compatible" },
+        { icon: "📊", label: "Dashboard", val: "React Admin UI", sub: "Deployed on Vercel" },
+        { icon: "🔥", label: "Lead Scoring", val: "Intent-based", sub: "HOT / WARM / COLD" },
+        { icon: "🔒", label: "Privacy", val: "GDPR Consent", sub: "Cookie banner built-in" },
+        { icon: "🚀", label: "Deploy Time", val: "~15 minutes", sub: "End-to-end setup" },
       ].map(c => (
         <Card key={c.label} className="flex items-start gap-3 p-4">
           <span className="text-xl mt-0.5">{c.icon}</span>
@@ -133,20 +133,20 @@ const OverviewTab = () => (
     <Card>
       <SectionTitle sub="How data flows from visitor to your dashboard">System Architecture</SectionTitle>
       <div className="font-mono text-xs text-slate-400 leading-7 bg-[#080f18] rounded-xl p-5 border border-[#1a2535]">
-        <div className="text-orange-400/80 font-semibold">{"\u250C\u2500 FRONTEND  (GitHub Pages) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510"}</div>
-        <div className="pl-3">{"\u2502  "}<span className="text-sky-400">tracker.js</span>{"       \u2192 session_id \u00B7 pageviews \u00B7 heartbeat    \u2502"}</div>
-        <div className="pl-3">{"\u2502  "}<span className="text-sky-400">lead-modal.js</span>{"   \u2192 premium form \u00B7 session link           \u2502"}</div>
-        <div className="pl-3">{"\u2502  "}<span className="text-sky-400">consent-banner.js</span>{"\u2192 GDPR / cookie opt-in                 \u2502"}</div>
-        <div className="text-orange-400/80 font-semibold">{"\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"}</div>
-        <div className="text-center text-slate-600 my-1">{"\u2195  HTTPS REST  (JSON)"}</div>
-        <div className="text-orange-400/80 font-semibold">{"\u250C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25BC\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510"}</div>
-        <div className="pl-3">{"\u2502  "}<span className="text-emerald-400">FastAPI</span>{"  (Render.com)                                  \u2502"}</div>
-        <div className="pl-3">{"\u2502  POST /track/session/start|end  \u00B7  POST /track/pageview  \u2502"}</div>
-        <div className="pl-3">{"\u2502  POST /lead/submit              \u00B7  GET  /admin/*         \u2502"}</div>
-        <div className="text-orange-400/80 font-semibold">{"\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"}</div>
+        <div className="text-orange-400/80 font-semibold">{"┌─ FRONTEND  (GitHub Pages) ─────────────────────────────┐"}</div>
+        <div className="pl-3">{"│  "}<span className="text-sky-400">tracker.js</span>{"       → session_id · pageviews · heartbeat    │"}</div>
+        <div className="pl-3">{"│  "}<span className="text-sky-400">lead-modal.js</span>{"   → premium form · session link           │"}</div>
+        <div className="pl-3">{"│  "}<span className="text-sky-400">consent-banner.js</span>{"→ GDPR / cookie opt-in                 │"}</div>
+        <div className="text-orange-400/80 font-semibold">{"└─────────────────────────┬─────────────────────────────┘"}</div>
+        <div className="text-center text-slate-600 my-1">{"↕  HTTPS REST  (JSON)"}</div>
+        <div className="text-orange-400/80 font-semibold">{"┌─────────────────────────▼─────────────────────────────┐"}</div>
+        <div className="pl-3">{"│  "}<span className="text-emerald-400">FastAPI</span>{"  (Render.com)                                  │"}</div>
+        <div className="pl-3">{"│  POST /track/session/start|end  ·  POST /track/pageview  │"}</div>
+        <div className="pl-3">{"│  POST /lead/submit              ·  GET  /admin/*         │"}</div>
+        <div className="text-orange-400/80 font-semibold">{"└────────────┬──────────────────────────┬────────────────┘"}</div>
         <div className="flex justify-around text-slate-600 mt-1">
           <span className="text-slate-400">PostgreSQL</span>
-          <span className="text-slate-600">{"\u00B7 \u00B7 \u00B7"}</span>
+          <span className="text-slate-600">{"· · ·"}</span>
           <span className="text-slate-400">Redis (optional)</span>
         </div>
       </div>
@@ -156,9 +156,9 @@ const OverviewTab = () => (
       <SectionTitle sub="Leads are automatically scored on session close">Lead Scoring Model</SectionTitle>
       <div className="space-y-3">
         {[
-          { label: "HOT", emoji: "\uD83D\uDD25", desc: "Used solar designer + 3+ min on site + submitted form", pts: "75\u2013100 pts", bg: "border-red-500/20 bg-red-500/5", t: "text-red-400" },
-          { label: "WARM", emoji: "\u2668\uFE0F", desc: "60+ sec + 3 pages viewed, or submitted the form", pts: "40\u201374 pts", bg: "border-orange-500/20 bg-orange-500/5", t: "text-orange-400" },
-          { label: "COLD", emoji: "\u2744\uFE0F", desc: "Under 30 seconds, 1\u20132 pages, no tool interaction", pts: "0\u201339 pts", bg: "border-blue-500/20 bg-blue-500/5", t: "text-blue-400" },
+          { label: "HOT", emoji: "🔥", desc: "Used solar designer + 3+ min on site + submitted form", pts: "75–100 pts", bg: "border-red-500/20 bg-red-500/5", t: "text-red-400" },
+          { label: "WARM", emoji: "♨️", desc: "60+ sec + 3 pages viewed, or submitted the form", pts: "40–74 pts", bg: "border-orange-500/20 bg-orange-500/5", t: "text-orange-400" },
+          { label: "COLD", emoji: "❄️", desc: "Under 30 seconds, 1–2 pages, no tool interaction", pts: "0–39 pts", bg: "border-blue-500/20 bg-blue-500/5", t: "text-blue-400" },
         ].map(s => (
           <div key={s.label} className={`flex items-center justify-between rounded-xl px-5 py-4 border ${s.bg}`}>
             <div className="flex items-center gap-3">
@@ -181,19 +181,19 @@ const BackendTab = () => (
     <Card>
       <SectionTitle sub="Directory layout for the FastAPI project">Project Structure</SectionTitle>
       <CodeBlock filename="terminal" code={`solar-tracker-api/
-\u251C\u2500\u2500 main.py              # FastAPI app \u00B7 CORS \u00B7 rate limiting
-\u251C\u2500\u2500 database.py          # SQLAlchemy engine + session factory
-\u251C\u2500\u2500 models.py            # ORM table definitions
-\u251C\u2500\u2500 schemas.py           # Pydantic request / response models
-\u251C\u2500\u2500 routers/
-\u2502   \u251C\u2500\u2500 tracking.py      # POST /track/*
-\u2502   \u251C\u2500\u2500 leads.py         # POST /lead/submit
-\u2502   \u2514\u2500\u2500 admin.py         # GET  /admin/*
-\u251C\u2500\u2500 services/
-\u2502   \u251C\u2500\u2500 geolocation.py   # IP \u2192 country / city lookup
-\u2502   \u2514\u2500\u2500 scoring.py       # Intent scoring engine
-\u251C\u2500\u2500 requirements.txt
-\u2514\u2500\u2500 .env`} />
+├── main.py              # FastAPI app · CORS · rate limiting
+├── database.py          # SQLAlchemy engine + session factory
+├── models.py            # ORM table definitions
+├── schemas.py           # Pydantic request / response models
+├── routers/
+│   ├── tracking.py      # POST /track/*
+│   ├── leads.py         # POST /lead/submit
+│   └── admin.py         # GET  /admin/*
+├── services/
+│   ├── geolocation.py   # IP → country / city lookup
+│   └── scoring.py       # Intent scoring engine
+├── requirements.txt
+└── .env`} />
     </Card>
 
     <Card>
@@ -451,7 +451,7 @@ const DatabaseTab = () => (
   <div className="space-y-6">
     <Card>
       <SectionTitle sub="Run once against your Render PostgreSQL instance">schema.sql</SectionTitle>
-      <CodeBlock filename="schema.sql" code={`-- Solar Tracker \u00B7 PostgreSQL Schema
+      <CodeBlock filename="schema.sql" code={`-- Solar Tracker · PostgreSQL Schema
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -511,8 +511,8 @@ CREATE INDEX idx_leads_created     ON leads     (created_at DESC);`} />
 const FrontendTab = () => (
   <div className="space-y-6">
     <Card>
-      <SectionTitle sub="Drop into every page's <head> \u2014 zero dependencies">tracker.js</SectionTitle>
-      <CodeBlock filename="tracker.js" code={`/* SolarTracker v1.0 \u2014 Plug-and-play analytics script
+      <SectionTitle sub="Drop into every page's <head> — zero dependencies">tracker.js</SectionTitle>
+      <CodeBlock filename="tracker.js" code={`/* SolarTracker v1.0 — Plug-and-play analytics script
    Usage: <script src="/js/tracker.js"
                   data-api="https://your-api.render.com"><\/script>
 */
@@ -612,7 +612,7 @@ const FrontendTab = () => (
     </Card>
 
     <Card>
-      <SectionTitle sub="GDPR-compliant consent banner \u2014 no tracking fires until accepted">consent-banner.js</SectionTitle>
+      <SectionTitle sub="GDPR-compliant consent banner — no tracking fires until accepted">consent-banner.js</SectionTitle>
       <CodeBlock filename="consent-banner.js" code={`(function () {
   if (localStorage.getItem("solar_consent")) return;
 
@@ -664,7 +664,7 @@ const FrontendTab = () => (
 const ModalTab = () => (
   <div className="space-y-6">
     <Card>
-      <SectionTitle sub="Premium animated lead capture modal \u2014 listens for solar:showLeadForm event">lead-modal.js</SectionTitle>
+      <SectionTitle sub="Premium animated lead capture modal — listens for solar:showLeadForm event">lead-modal.js</SectionTitle>
       <CodeBlock filename="lead-modal.js" code={`(function () {
   const API = window.__solarAPI || "https://your-api.render.com";
   let injected = false;
@@ -760,8 +760,8 @@ const ModalTab = () => (
     ov.id = "sl-ov";
     ov.innerHTML = \`
       <div id="sl-m" role="dialog" aria-modal="true">
-        <button id="sl-x" aria-label="Close">\u2715</button>
-        <div id="sl-chip">\u2600\uFE0F FREE ANALYSIS</div>
+        <button id="sl-x" aria-label="Close">✕</button>
+        <div id="sl-chip">☀️ FREE ANALYSIS</div>
         <h2>Discover Your Solar<br>Savings Potential</h2>
         <p class="sub">Join 10,000+ property owners who've mapped their solar opportunity. Free, instant, no commitment.</p>
         <div id="sl-body">
@@ -775,8 +775,8 @@ const ModalTab = () => (
             <input id="sl-em" type="email" placeholder="jane@company.com" autocomplete="email"></div>
           <div class="sl-f"><label>Company <span style="opacity:.4;font-weight:400;text-transform:none">(optional)</span></label>
             <input id="sl-co" type="text" placeholder="Acme Corp" autocomplete="organization"></div>
-          <button id="sl-btn">Get My Free Analysis \u2192</button>
-          <p class="sl-legal">No spam \u00B7 Unsubscribe anytime \u00B7 Data protected</p>
+          <button id="sl-btn">Get My Free Analysis →</button>
+          <p class="sl-legal">No spam · Unsubscribe anytime · Data protected</p>
         </div>
       </div>\`;
     document.body.appendChild(ov);
@@ -796,7 +796,7 @@ const ModalTab = () => (
       }
       em.classList.remove("err");
       const btn = document.getElementById("sl-btn");
-      btn.disabled = true; btn.textContent = "Submitting\u2026";
+      btn.disabled = true; btn.textContent = "Submitting…";
 
       try {
         await fetch(API + "/lead/submit", {
@@ -812,14 +812,14 @@ const ModalTab = () => (
         });
         document.getElementById("sl-body").innerHTML = \`
           <div class="sl-ok">
-            <span class="ck">\u2705</span>
+            <span class="ck">✅</span>
             <h3>You're all set!</h3>
             <p>Your personalized solar analysis is on its way to<br>
                <strong style="color:#f97316">\${val}</strong>.</p>
           </div>\`;
         setTimeout(close, 4500);
       } catch {
-        btn.disabled = false; btn.textContent = "Get My Free Analysis \u2192";
+        btn.disabled = false; btn.textContent = "Get My Free Analysis →";
       }
     };
   };
@@ -833,9 +833,9 @@ const ModalTab = () => (
 const DashboardTab = () => {
   const leads = [
     { name: "Sarah Chen",  email: "sarah@solarcorp.com", company: "SolarCorp", score: 91, label: "HOT",  date: "Apr 1" },
-    { name: "Mike Torres", email: "mike.t@gmail.com",    company: "\u2014",    score: 62, label: "WARM", date: "Apr 1" },
+    { name: "Mike Torres", email: "mike.t@gmail.com",    company: "—",    score: 62, label: "WARM", date: "Apr 1" },
     { name: "Lisa Park",   email: "l.park@suntech.io",   company: "SunTech",   score: 85, label: "HOT",  date: "Mar 31" },
-    { name: "James Wu",    email: "jwu@email.com",       company: "\u2014",    score: 24, label: "COLD", date: "Mar 31" },
+    { name: "James Wu",    email: "jwu@email.com",       company: "—",    score: 24, label: "COLD", date: "Mar 31" },
     { name: "Ana Reyes",   email: "ana@greenenergy.com", company: "GreenCo",   score: 77, label: "HOT",  date: "Mar 30" },
   ];
   const labelStyle = l =>
@@ -850,17 +850,17 @@ const DashboardTab = () => {
         <div className="bg-[#060d16] px-5 py-3 border-b border-[#1a2535] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"/><span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"/><span className="w-2.5 h-2.5 rounded-full bg-[#28c840]"/></div>
-            <span className="text-xs text-slate-500 ml-1">Admin Dashboard \u2014 Live Preview</span>
+            <span className="text-xs text-slate-500 ml-1">Admin Dashboard — Live Preview</span>
           </div>
           <Badge color="green">Live</Badge>
         </div>
         <div className="bg-[#080f18] p-6 space-y-6">
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: "Total Visitors",  val: "1,842", delta: "+12%", color: "text-sky-400",    icon: "\uD83D\uDC65" },
-              { label: "Leads Captured",  val: "247",   delta: "+8%",  color: "text-emerald-400",icon: "\u2709\uFE0F" },
-              { label: "Conversion Rate", val: "13.4%", delta: "+2.1%",color: "text-orange-400", icon: "\uD83D\uDCC8" },
-              { label: "HOT Leads",       val: "41",    delta: "+5",   color: "text-red-400",    icon: "\uD83D\uDD25" },
+              { label: "Total Visitors",  val: "1,842", delta: "+12%", color: "text-sky-400",    icon: "👥" },
+              { label: "Leads Captured",  val: "247",   delta: "+8%",  color: "text-emerald-400",icon: "✉️" },
+              { label: "Conversion Rate", val: "13.4%", delta: "+2.1%",color: "text-orange-400", icon: "📈" },
+              { label: "HOT Leads",       val: "41",    delta: "+5",   color: "text-red-400",    icon: "🔥" },
             ].map(s => (
               <div key={s.label} className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -877,7 +877,7 @@ const DashboardTab = () => {
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#1a2535]">
               <span className="text-sm font-semibold text-white">Recent Leads</span>
               <button className="text-xs text-orange-400 border border-orange-500/20 bg-orange-500/5 px-3 py-1.5 rounded-lg hover:bg-orange-500/10 transition-colors">
-                Export CSV \u2193
+                Export CSV ↓
               </button>
             </div>
             <table className="w-full text-xs">
@@ -956,7 +956,7 @@ export default function App() {
 
   if (!stats) return (
     <div className="flex h-screen items-center justify-center bg-[#060d16] text-slate-400 text-sm">
-      Loading\u2026
+      Loading…
     </div>
   );
 
@@ -967,12 +967,12 @@ export default function App() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">\u2600\uFE0F Solar Lead Analytics</h1>
+            <h1 className="text-xl font-bold tracking-tight">☀️ Solar Lead Analytics</h1>
             <p className="text-xs text-slate-500 mt-0.5">Real-time visitor intelligence</p>
           </div>
           <button onClick={() => window.open(API + "/admin/leads/export")}
             className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-colors">
-            Export CSV \u2193
+            Export CSV ↓
           </button>
         </div>
 
@@ -1005,7 +1005,7 @@ export default function App() {
                 <tr key={l.id} className="border-b border-[#111c2e] hover:bg-white/[.02]">
                   <td className="px-6 py-3 font-medium">{l.first_name} {l.last_name}</td>
                   <td className="px-6 py-3 text-slate-400">{l.email}</td>
-                  <td className="px-6 py-3 text-slate-500">{l.company || "\u2014"}</td>
+                  <td className="px-6 py-3 text-slate-500">{l.company || "—"}</td>
                   <td className="px-6 py-3">{l.score}/100</td>
                   <td className="px-6 py-3">
                     <span className={\\\`px-2 py-0.5 rounded-md text-[10px] font-bold border \\\${CHIP(l.score_label)}\\\`}>
@@ -1034,7 +1034,7 @@ const DeploymentTab = () => (
   <div className="space-y-6">
     <div className="grid grid-cols-3 gap-3 mb-2">
       {[
-        { step: "01", title: "Push to GitHub", sub: "Backend repo \u2192 Render" },
+        { step: "01", title: "Push to GitHub", sub: "Backend repo → Render" },
         { step: "02", title: "Add 3 Script Tags", sub: "Paste into your HTML" },
         { step: "03", title: "Deploy Dashboard", sub: "Vercel one-command" },
       ].map(s => (
@@ -1047,7 +1047,7 @@ const DeploymentTab = () => (
     </div>
 
     <Card>
-      <SectionTitle sub="render.yaml \u2014 commit this to your repo root">Backend \u2192 Render.com</SectionTitle>
+      <SectionTitle sub="render.yaml — commit this to your repo root">Backend → Render.com</SectionTitle>
       <CodeBlock filename="render.yaml" code={`services:
   - type: web
     name: solar-tracker-api
@@ -1087,7 +1087,7 @@ databases:
 
 <!-- Tag your CTAs so the modal fires on click -->
 <button data-solar-cta class="btn-primary">
-  Start Designing \u2192
+  Start Designing →
 </button>
 
 <!-- Tag your designer tool container -->
@@ -1097,7 +1097,7 @@ databases:
     </Card>
 
     <Card>
-      <SectionTitle sub="Deploy the React admin dashboard to Vercel in one command">Dashboard \u2192 Vercel</SectionTitle>
+      <SectionTitle sub="Deploy the React admin dashboard to Vercel in one command">Dashboard → Vercel</SectionTitle>
       <CodeBlock filename="terminal" code={`# 1. Bootstrap the React project
 npx create-react-app solar-dashboard
 cd solar-dashboard
@@ -1113,7 +1113,7 @@ echo "REACT_APP_API_URL=https://solar-tracker-api.onrender.com" > .env.local
 
 # 5. Ship it
 npx vercel --prod
-# \u2705 https://solar-dashboard.vercel.app`} />
+# ✅ https://solar-dashboard.vercel.app`} />
     </Card>
 
     <Card>
@@ -1141,11 +1141,11 @@ async def require_admin(key: str = Depends(_header)):
             "Input sanitization via bleach",
             "Email deduplication (no duplicates stored)",
             "GDPR consent gate before any tracking fires",
-            "No passwords or payment data stored \u2014 email only",
+            "No passwords or payment data stored — email only",
             "Admin routes protected by API key header",
           ].map(t => (
             <div key={t} className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="text-emerald-500">{"\u2713"}</span> {t}
+              <span className="text-emerald-500">{"✓"}</span> {t}
             </div>
           ))}
         </div>
@@ -1175,7 +1175,7 @@ function App() {
       {/* Top bar */}
       <div className="border-b border-[#1a2535] bg-[#060d16] px-6 h-14 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-sm font-bold shadow-lg shadow-orange-500/20">{"\u2600"}</div>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-sm font-bold shadow-lg shadow-orange-500/20">{"☀"}</div>
           <div>
             <div className="text-sm font-bold tracking-tight">Solar Lead Analytics</div>
             <div className="text-[10px] text-slate-500 -mt-0.5">Full-Stack Blueprint</div>
@@ -1184,7 +1184,7 @@ function App() {
         <div className="flex items-center gap-3">
           <a href="../solar-education/Ampacity_Renewables_Solar_Education.html"
              className="text-xs text-slate-400 hover:text-orange-400 transition-colors px-3 py-1.5 rounded-lg border border-[#1a2535] hover:border-orange-500/30">
-            {"\u2190"} Back to Education
+            {"←"} Back to Education
           </a>
           <Badge color="orange">v1.0</Badge>
         </div>

@@ -832,8 +832,8 @@ const ModalTab = () => (
 
 const DashboardTab = () => {
   const { useState: us, useEffect: ue } = React;
-  const [data, setData] = us({ sessions: [], pageviews: [], leads: [] });
-  const [tick, setTick] = us(0);
+  const [data, setData] = us({ users: [], sessions: [], pageviews: [], leads: [] });
+  const [view, setView] = us("sessions"); // sessions | users | pages
 
   ue(() => {
     const load = () => {
@@ -843,25 +843,28 @@ const DashboardTab = () => {
       } catch(e) {}
     };
     load();
-    const iv = setInterval(() => { load(); setTick(t => t + 1); }, 3000);
+    const iv = setInterval(load, 3000);
     return () => clearInterval(iv);
   }, []);
 
+  const users = data.users || [];
   const sessions = data.sessions || [];
   const pageviews = data.pageviews || [];
   const leads = data.leads || [];
 
-  const totalVisitors = sessions.length;
-  const totalLeads = leads.length;
-  const convRate = totalVisitors > 0 ? ((totalLeads / totalVisitors) * 100).toFixed(1) : "0.0";
-  const hotLeads = leads.filter(l => l.score_label === "HOT").length;
-
-  // Calculate avg session duration
+  // Stats
+  const uniqueUsers = users.length;
+  const totalSessions = sessions.length;
+  const totalPvs = pageviews.length;
+  const activeSessions = sessions.filter(s => s.is_active).length;
+  const activeTabCount = parseInt(localStorage.getItem("solar_tab_count") || "0");
   const avgDur = sessions.length > 0
     ? Math.round(sessions.reduce((a, s) => a + (s.duration_seconds || 0), 0) / sessions.length)
     : 0;
+  const designerUse = sessions.filter(s => s.used_designer).length;
+  const designerPct = totalSessions > 0 ? ((designerUse / totalSessions) * 100).toFixed(0) : 0;
 
-  // Calculate score for sessions without leads (for session table)
+  // Score a session
   const scoreSession = (sess) => {
     if (!sess) return { score: 0, label: "COLD" };
     let score = 0;
@@ -880,14 +883,13 @@ const DashboardTab = () => {
 
   // Top pages
   const pageCounts = {};
-  pageviews.forEach(pv => {
-    const url = pv.page_url || "unknown";
-    pageCounts[url] = (pageCounts[url] || 0) + 1;
-  });
-  const topPages = Object.entries(pageCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6);
+  pageviews.forEach(pv => { const u = pv.page_url || "?"; pageCounts[u] = (pageCounts[u] || 0) + 1; });
+  const topPages = Object.entries(pageCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const maxViews = topPages.length > 0 ? topPages[0][1] : 1;
+
+  // Device breakdown
+  const devices = {};
+  sessions.forEach(s => { const d = s.device_type || "desktop"; devices[d] = (devices[d] || 0) + 1; });
 
   const labelStyle = l =>
     l === "HOT"  ? "bg-red-500/10 text-red-400 border-red-500/20" :
@@ -901,33 +903,46 @@ const DashboardTab = () => {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
+  const fmtDur = s => {
+    if (s < 60) return s + "s";
+    return Math.floor(s / 60) + "m " + (s % 60) + "s";
+  };
+
   const clearData = () => {
     if (confirm("Clear all tracking data? This cannot be undone.")) {
       localStorage.removeItem("solar_tracker_db");
-      setData({ sessions: [], pageviews: [], leads: [] });
+      setData({ users: [], sessions: [], pageviews: [], leads: [] });
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-[#1a2535] overflow-hidden">
+        {/* Header */}
         <div className="bg-[#060d16] px-5 py-3 border-b border-[#1a2535] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"/><span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"/><span className="w-2.5 h-2.5 rounded-full bg-[#28c840]"/></div>
-            <span className="text-xs text-slate-500 ml-1">Admin Dashboard — Live Data</span>
+            <span className="text-xs text-slate-500 ml-1">Admin Dashboard — Live Data (v2.0)</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-600">Auto-refreshes every 3s</span>
+            {activeTabCount > 0 && (
+              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                {activeTabCount} tab{activeTabCount !== 1 ? "s" : ""} active
+              </span>
+            )}
+            <span className="text-[10px] text-slate-600">Auto-refresh 3s</span>
             <Badge color="green">Live</Badge>
           </div>
         </div>
+
         <div className="bg-[#080f18] p-6 space-y-6">
+          {/* Stats row 1 */}
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: "Total Sessions", val: totalVisitors.toLocaleString(), color: "text-sky-400", icon: "👥" },
-              { label: "Total Pageviews", val: pageviews.length.toLocaleString(), color: "text-emerald-400", icon: "📄" },
-              { label: "Avg Duration", val: avgDur + "s", color: "text-orange-400", icon: "⏱" },
-              { label: "Leads Captured", val: totalLeads.toLocaleString(), color: "text-red-400", icon: "✉️" },
+              { label: "Unique Users", val: uniqueUsers, color: "text-purple-400", icon: "👤" },
+              { label: "Total Sessions", val: totalSessions, color: "text-sky-400", icon: "🔗" },
+              { label: "Total Pageviews", val: totalPvs, color: "text-emerald-400", icon: "📄" },
+              { label: "Active Now", val: activeSessions, color: activeSessions > 0 ? "text-green-400" : "text-slate-500", icon: "🟢" },
             ].map(s => (
               <div key={s.label} className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -939,53 +954,104 @@ const DashboardTab = () => {
             ))}
           </div>
 
-          {/* Sessions table */}
+          {/* Stats row 2 */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
+              <div className="text-xs text-slate-500 uppercase tracking-widest mb-2">Avg Session Duration</div>
+              <div className="text-xl font-bold text-orange-400">{fmtDur(avgDur)}</div>
+            </div>
+            <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
+              <div className="text-xs text-slate-500 uppercase tracking-widest mb-2">Designer Tool Usage</div>
+              <div className="text-xl font-bold text-cyan-400">{designerPct}%</div>
+              <div className="text-[10px] text-slate-600 mt-1">{designerUse} of {totalSessions} sessions</div>
+            </div>
+            <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
+              <div className="text-xs text-slate-500 uppercase tracking-widest mb-2">Device Breakdown</div>
+              <div className="flex items-center gap-3 mt-1">
+                {Object.entries(devices).map(([d, c]) => (
+                  <div key={d} className="text-center">
+                    <div className="text-sm font-bold text-white">{c}</div>
+                    <div className="text-[10px] text-slate-500">{d === "desktop" ? "💻" : d === "mobile" ? "📱" : "📱"} {d}</div>
+                  </div>
+                ))}
+                {Object.keys(devices).length === 0 && <div className="text-xs text-slate-600">No data</div>}
+              </div>
+            </div>
+          </div>
+
+          {/* View switcher */}
+          <div className="flex gap-2">
+            {[
+              { id: "sessions", label: "Sessions" },
+              { id: "users", label: "Users" },
+              { id: "pages", label: "Pages" },
+            ].map(v => (
+              <button key={v.id} onClick={() => setView(v.id)}
+                className={`text-xs px-3 py-1.5 rounded-lg transition-all ${
+                  view === v.id
+                    ? "bg-orange-500/10 text-orange-400 border border-orange-500/20"
+                    : "text-slate-500 border border-[#1a2535] hover:text-slate-300"
+                }`}>{v.label}</button>
+            ))}
+            <div className="flex-1" />
+            <button onClick={clearData} className="text-xs text-red-400 border border-red-500/20 bg-red-500/5 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors">
+              Clear All Data
+            </button>
+          </div>
+
+          {/* Sessions view */}
+          {view === "sessions" && (
           <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#1a2535]">
+            <div className="px-5 py-3.5 border-b border-[#1a2535]">
               <span className="text-sm font-semibold text-white">Recent Sessions</span>
-              <button onClick={clearData} className="text-xs text-red-400 border border-red-500/20 bg-red-500/5 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors">
-                Clear Data
-              </button>
+              <span className="text-xs text-slate-600 ml-2">({sessions.length} total)</span>
             </div>
             {sessions.length === 0 ? (
               <div className="px-5 py-8 text-center">
                 <div className="text-2xl mb-2">📭</div>
-                <div className="text-sm text-slate-400">No sessions recorded yet</div>
+                <div className="text-sm text-slate-400">No sessions yet</div>
                 <div className="text-xs text-slate-600 mt-1">Visit your solar education site to start tracking</div>
               </div>
             ) : (
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-[#1a2535]">
-                  {["Device","Pages","Duration","Designer","Score","Started"].map(h => (
-                    <th key={h} className="text-left px-5 py-2.5 text-slate-500 font-semibold uppercase tracking-widest text-[10px]">{h}</th>
+                  {["Status","User","Device","Pages","Duration","Designer","Score","Started"].map(h => (
+                    <th key={h} className="text-left px-4 py-2.5 text-slate-500 font-semibold uppercase tracking-widest text-[10px]">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {[...sessions].reverse().slice(0, 20).map((s, i) => {
+                {[...sessions].reverse().slice(0, 25).map((s, i) => {
                   const sc = scoreSession(s);
+                  const uid = (s.user_id || "").substring(0, 8);
                   return (
                   <tr key={i} className="border-b border-[#111c2e] hover:bg-white/[.02] transition-colors">
-                    <td className="px-5 py-3 text-slate-200 font-medium">
-                      {s.device === "mobile" ? "📱" : s.device === "tablet" ? "📱" : "💻"} {s.device}
+                    <td className="px-4 py-3">
+                      {s.is_active
+                        ? <span className="inline-flex items-center gap-1 text-emerald-400"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>Live</span>
+                        : <span className="text-slate-600">Ended</span>}
                     </td>
-                    <td className="px-5 py-3 text-slate-300">{s.pages_viewed || 0}</td>
-                    <td className="px-5 py-3 text-slate-300">{s.duration_seconds || 0}s</td>
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-3 text-slate-400 font-mono text-[10px]">{uid}...</td>
+                    <td className="px-4 py-3 text-slate-200">
+                      {s.device_type === "mobile" ? "📱" : s.device_type === "tablet" ? "📱" : "💻"} {s.device_type || "desktop"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-300">{s.pages_viewed || 0}</td>
+                    <td className="px-4 py-3 text-slate-300">{fmtDur(s.duration_seconds || 0)}</td>
+                    <td className="px-4 py-3">
                       {s.used_designer
-                        ? <span className="text-emerald-400">✓ Yes</span>
-                        : <span className="text-slate-600">No</span>}
+                        ? <span className="text-emerald-400">✓</span>
+                        : <span className="text-slate-600">—</span>}
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-12 bg-[#1a2535] rounded-full h-1.5">
+                        <div className="w-10 bg-[#1a2535] rounded-full h-1.5">
                           <div className={`h-1.5 rounded-full ${barColor(sc.label)}`} style={{width:`${sc.score}%`}}/>
                         </div>
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${labelStyle(sc.label)}`}>{sc.label}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${labelStyle(sc.label)}`}>{sc.label}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-slate-500">{fmtDate(s.start_time)}</td>
+                    <td className="px-4 py-3 text-slate-500 text-[10px]">{fmtDate(s.start_time)}</td>
                   </tr>
                   );
                 })}
@@ -993,8 +1059,45 @@ const DashboardTab = () => {
             </table>
             )}
           </div>
+          )}
 
-          {/* Top pages */}
+          {/* Users view */}
+          {view === "users" && (
+          <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[#1a2535]">
+              <span className="text-sm font-semibold text-white">Unique Users</span>
+              <span className="text-xs text-slate-600 ml-2">({users.length} total)</span>
+            </div>
+            {users.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-slate-400">No users yet</div>
+            ) : (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#1a2535]">
+                  {["User ID","Device","First Seen","Last Seen","Sessions","Pageviews"].map(h => (
+                    <th key={h} className="text-left px-5 py-2.5 text-slate-500 font-semibold uppercase tracking-widest text-[10px]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...users].reverse().map((u, i) => (
+                  <tr key={i} className="border-b border-[#111c2e] hover:bg-white/[.02] transition-colors">
+                    <td className="px-5 py-3 text-slate-300 font-mono text-[10px]">{(u.id || "").substring(0, 12)}...</td>
+                    <td className="px-5 py-3 text-slate-300">{u.device_type === "mobile" ? "📱" : "💻"} {u.device_type || "desktop"}</td>
+                    <td className="px-5 py-3 text-slate-500 text-[10px]">{fmtDate(u.first_seen)}</td>
+                    <td className="px-5 py-3 text-slate-500 text-[10px]">{fmtDate(u.last_seen)}</td>
+                    <td className="px-5 py-3 text-slate-300">{u.total_sessions || 0}</td>
+                    <td className="px-5 py-3 text-slate-300">{u.total_pageviews || 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            )}
+          </div>
+          )}
+
+          {/* Pages view */}
+          {view === "pages" && (
           <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-5">
             <div className="text-sm font-semibold text-white mb-4">Top Pages by Traffic</div>
             {topPages.length === 0 ? (
@@ -1003,111 +1106,20 @@ const DashboardTab = () => {
             <div className="space-y-3">
               {topPages.map(([url, views]) => (
                 <div key={url} className="flex items-center gap-3">
-                  <div className="text-xs text-slate-400 w-48 truncate font-mono">{url}</div>
-                  <div className="flex-1 bg-[#1a2535] rounded-full h-1.5">
-                    <div className="bg-orange-500 h-1.5 rounded-full transition-all" style={{width:`${(views/maxViews)*100}%`}}/>
+                  <div className="text-xs text-slate-400 w-56 truncate font-mono">{url}</div>
+                  <div className="flex-1 bg-[#1a2535] rounded-full h-2">
+                    <div className="bg-gradient-to-r from-orange-500 to-orange-400 h-2 rounded-full transition-all" style={{width:`${(views/maxViews)*100}%`}}/>
                   </div>
-                  <div className="text-xs text-slate-400 w-8 text-right">{views}</div>
+                  <div className="text-xs text-slate-300 w-10 text-right font-semibold">{views}</div>
                 </div>
               ))}
             </div>
             )}
           </div>
+          )}
+
         </div>
       </div>
-
-      <Card>
-        <SectionTitle sub="Full React component for the admin dashboard">dashboard/src/App.jsx</SectionTitle>
-        <CodeBlock filename="src/App.jsx" code={`import { useEffect, useState } from "react";
-
-const API  = process.env.REACT_APP_API_URL || "https://your-api.render.com";
-const CHIP = l => l === "HOT"  ? "bg-red-500/10 text-red-400 border-red-500/20"    :
-                  l === "WARM" ? "bg-orange-500/10 text-orange-400 border-orange-500/20" :
-                                 "bg-blue-500/10 text-blue-400 border-blue-500/20";
-
-export default function App() {
-  const [stats, setStats] = useState(null);
-  const [leads, setLeads] = useState([]);
-
-  useEffect(() => {
-    Promise.all([
-      fetch(API + "/admin/analytics").then(r => r.json()),
-      fetch(API + "/admin/leads").then(r => r.json()),
-    ]).then(([s, l]) => { setStats(s); setLeads(l); });
-  }, []);
-
-  if (!stats) return (
-    <div className="flex h-screen items-center justify-center bg-[#060d16] text-slate-400 text-sm">
-      Loading…
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-[#060d16] text-white p-8 font-sans">
-      <div className="max-w-6xl mx-auto space-y-8">
-
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">☀️ Solar Lead Analytics</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Real-time visitor intelligence</p>
-          </div>
-          <button onClick={() => window.open(API + "/admin/leads/export")}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-colors">
-            Export CSV ↓
-          </button>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { k: "total_visitors",      label: "Visitors",       color: "text-sky-400"    },
-            { k: "total_leads",          label: "Leads",          color: "text-emerald-400"},
-            { k: "conversion_rate",      label: "Conversion %",   color: "text-orange-400" },
-            { k: "avg_session_duration", label: "Avg Duration (s)",color:"text-purple-400" },
-          ].map(s => (
-            <div key={s.k} className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
-              <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">{s.label}</div>
-              <div className={\\\`text-2xl font-bold \\\${s.color}\\\`}>{stats[s.k]}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Leads table */}
-        <div className="bg-[#0d1520] border border-[#1a2535] rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-[#1a2535] text-sm font-semibold">Recent Leads</div>
-          <table className="w-full text-sm">
-            <thead className="text-[10px] text-slate-500 uppercase tracking-widest border-b border-[#1a2535]">
-              <tr>{["Name","Email","Company","Score","Label","Date"].map(h => (
-                <th key={h} className="text-left px-6 py-3">{h}</th>
-              ))}</tr>
-            </thead>
-            <tbody>
-              {leads.map(l => (
-                <tr key={l.id} className="border-b border-[#111c2e] hover:bg-white/[.02]">
-                  <td className="px-6 py-3 font-medium">{l.first_name} {l.last_name}</td>
-                  <td className="px-6 py-3 text-slate-400">{l.email}</td>
-                  <td className="px-6 py-3 text-slate-500">{l.company || "—"}</td>
-                  <td className="px-6 py-3">{l.score}/100</td>
-                  <td className="px-6 py-3">
-                    <span className={\\\`px-2 py-0.5 rounded-md text-[10px] font-bold border \\\${CHIP(l.score_label)}\\\`}>
-                      {l.score_label}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3 text-slate-500">
-                    {new Date(l.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-      </div>
-    </div>
-  );
-}`} />
-      </Card>
     </div>
   );
 };

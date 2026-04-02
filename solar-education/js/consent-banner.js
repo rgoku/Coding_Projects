@@ -1,11 +1,19 @@
 /* ═══════════════════════════════════════════════════════════
    GDPR Consent Banner — No tracking fires until accepted
+   Must load BEFORE tracker.js
 ═══════════════════════════════════════════════════════════ */
 (function () {
-  // Already consented
+  // Already consented — set flag and exit (tracker.js will see this)
   if (localStorage.getItem("solar_consent")) {
     window.__solarConsent = true;
     return;
+  }
+
+  // Capture script src base path before any async happens
+  var scriptEl = document.currentScript;
+  var basePath = "";
+  if (scriptEl && scriptEl.src) {
+    basePath = scriptEl.src.substring(0, scriptEl.src.lastIndexOf("/") + 1);
   }
 
   var css = [
@@ -36,18 +44,17 @@
     '<button id="solar-cb-no">Decline</button></div>';
   document.body.appendChild(el);
 
-  document.getElementById("solar-cb-yes").onclick = function() {
+  document.getElementById("solar-cb-yes").onclick = function () {
     localStorage.setItem("solar_consent", "1");
     window.__solarConsent = true;
     el.remove();
-    // Load tracker now
+    // Dynamically load tracker.js using same base path as this script
     var s = document.createElement("script");
-    s.src = (document.currentScript ? document.currentScript.getAttribute("data-tracker") : null)
-            || "js/tracker.js";
+    s.src = basePath + "tracker.js";
     document.body.appendChild(s);
   };
 
-  document.getElementById("solar-cb-no").onclick = function() {
+  document.getElementById("solar-cb-no").onclick = function () {
     el.remove();
   };
 })();

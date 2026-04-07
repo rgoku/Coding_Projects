@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   SolarTracker v2.0 — Production-grade client-side analytics
+   SolarTracker v2.0 — Production-grade analytics with Supabase backend
 
    ARCHITECTURE:
    - Persistent user_id across sessions (localStorage + cookie backup)
@@ -7,6 +7,8 @@
    - Lightweight device fingerprinting (non-invasive)
    - Heartbeat system with 30-min inactivity timeout
    - Active tab counting
+   - Supabase backend: all data synced to cloud database so ANY visitor
+     from ANY browser is tracked and visible on the dashboard
 
    PRIVACY LIMITATIONS (by design):
    - Cannot reliably identify a specific person or physical device
@@ -16,8 +18,9 @@
    - localStorage can be cleared by the user at any time
    - Cookie backup is first-party only, no cross-domain tracking
 
-   DATA STORAGE: localStorage key "solar_tracker_db"
-   Data is read by the dashboard at /solar-lead-tracker/index.html
+   DATA STORAGE:
+   - Primary: Supabase PostgreSQL (cloud — tracks ALL visitors)
+   - Cache: localStorage key "solar_tracker_db" (local browser only)
 
    Usage: <script src="js/tracker.js"></script>
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -38,6 +41,43 @@
   var MAX_PAGEVIEWS    = 1000;
   var MAX_LEADS        = 500;
   var CHANNEL_NAME     = "solar_tracker_sync";
+
+  // ── SUPABASE CONFIG ────────────────────────────────────────────────────
+  var SUPABASE_URL     = "https://ifxsjddrnlyqvixjymkb.supabase.co";
+  var SUPABASE_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmeHNqZGRybmx5cXZpeGp5bWtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTcyNzEsImV4cCI6MjA5MTE3MzI3MX0.pi9jWOSzWZe0I_P5a-pY_4JvTqKtsRF1Bn0zLW3coSM";
+
+  // Fire-and-forget POST to Supabase REST API
+  function supaPost(table, data) {
+    try {
+      fetch(SUPABASE_URL + "/rest/v1/" + table, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY,
+          "Prefer": "resolution=merge-duplicates"
+        },
+        body: JSON.stringify(data),
+        keepalive: true
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
+  // Fire-and-forget PATCH to Supabase REST API
+  function supaPatch(table, matchCol, matchVal, data) {
+    try {
+      fetch(SUPABASE_URL + "/rest/v1/" + table + "?" + matchCol + "=eq." + encodeURIComponent(matchVal), {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY
+        },
+        body: JSON.stringify(data),
+        keepalive: true
+      }).catch(function () {});
+    } catch (e) {}
+  }
 
   // ── GUARD: consent required ────────────────────────────────────────────
   if (!window.__solarConsent && !localStorage.getItem("solar_consent")) return;
@@ -131,17 +171,19 @@
   function ensureUser(db) {
     var existing = db.users.find(function (u) { return u.id === userId; });
     if (!existing) {
-      db.users.push({
-        id: userId,
+      var userData = {
+        user_id: userId,
         first_seen: isoNow(),
         last_seen: isoNow(),
         device_id: deviceId,
         device_type: getDeviceType(),
         total_sessions: 0,
         total_pageviews: 0
-      });
-      // Cap users list
+      };
+      db.users.push({ id: userId, first_seen: userData.first_seen, last_seen: userData.last_seen, device_id: deviceId, device_type: userData.device_type, total_sessions: 0, total_pageviews: 0 });
       if (db.users.length > 500) db.users = db.users.slice(-500);
+      // Sync to Supabase
+      supaPost("tracked_users", userData);
     }
     return existing || db.users[db.users.length - 1];
   }
@@ -303,8 +345,8 @@
     var db = getDB();
     ensureUser(db);
 
-    db.sessions.push({
-      id: sessionId,
+    var sessionData = {
+      session_id: sessionId,
       user_id: userId,
       device_id: deviceId,
       device_type: getDeviceType(),
@@ -317,7 +359,9 @@
       page_list: [],
       active_tabs: 1,
       is_active: true
-    });
+    };
+
+    db.sessions.push({ id: sessionId, user_id: userId, device_id: deviceId, device_type: sessionData.device_type, referrer: sessionData.referrer, start_time: sessionData.start_time, end_time: null, duration_seconds: 0, pages_viewed: 0, used_designer: false, page_list: [], active_tabs: 1, is_active: true });
 
     // Update user stats
     var user = db.users.find(function (u) { return u.id === userId; });
@@ -328,6 +372,10 @@
 
     pruneDB(db);
     saveDB(db);
+
+    // Sync to Supabase
+    supaPost("sessions", sessionData);
+    supaPatch("tracked_users", "user_id", userId, { total_sessions: user ? user.total_sessions : 1, last_seen: isoNow() });
   }
 
   // ── PAGEVIEW TRACKING ─────────────────────────────────────────────────
@@ -335,8 +383,9 @@
   function trackPageView() {
     var db = getDB();
     var pageUrl = location.pathname + location.search;
+    var pvId = uuid();
     var pv = {
-      id: uuid(),
+      id: pvId,
       session_id: sessionId,
       user_id: userId,
       page_url: pageUrl,
@@ -363,7 +412,14 @@
 
     pruneDB(db);
     saveDB(db);
-    return pv.id;
+
+    // Sync to Supabase
+    supaPost("pageviews", { session_id: sessionId, user_id: userId, page_url: pageUrl, page_title: pv.page_title, time_on_page: 0 });
+    if (sess) {
+      supaPatch("sessions", "session_id", sessionId, { pages_viewed: sess.pages_viewed, page_list: sess.page_list });
+    }
+
+    return pvId;
   }
 
   var currentPvId = trackPageView();
@@ -373,8 +429,11 @@
   function markDesigner() {
     var db = getDB();
     var sess = db.sessions.find(function (s) { return s.id === sessionId; });
-    if (sess) sess.used_designer = true;
-    saveDB(db);
+    if (sess && !sess.used_designer) {
+      sess.used_designer = true;
+      saveDB(db);
+      supaPatch("sessions", "session_id", sessionId, { used_designer: true });
+    }
   }
 
   document.addEventListener("click", function (e) {
@@ -461,6 +520,19 @@
 
     saveDB(db);
 
+    // Sync to Supabase every 30 seconds (not every heartbeat, to avoid API spam)
+    if (!heartbeat._lastSync || (ts - heartbeat._lastSync) > 30000) {
+      heartbeat._lastSync = ts;
+      if (sess) {
+        supaPatch("sessions", "session_id", sessionId, {
+          duration_seconds: sess.duration_seconds,
+          end_time: sess.end_time,
+          active_tabs: tabCount,
+          is_active: true
+        });
+      }
+    }
+
     // Broadcast activity
     if (bc) {
       try { bc.postMessage({ type: "activity", tabId: tabId }); } catch (e) {}
@@ -476,6 +548,13 @@
       sess.active_tabs = 0;
     }
     saveDB(db);
+    // Sync final state to Supabase
+    supaPatch("sessions", "session_id", sessionId, {
+      end_time: isoNow(),
+      is_active: false,
+      active_tabs: 0,
+      duration_seconds: sess ? sess.duration_seconds : 0
+    });
   }
 
   var heartbeatTimer = setInterval(heartbeat, HEARTBEAT_MS);

@@ -830,27 +830,57 @@ const ModalTab = () => (
   </div>
 );
 
+const SUPA_URL = "https://ifxsjddrnlyqvixjymkb.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmeHNqZGRybmx5cXZpeGp5bWtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTcyNzEsImV4cCI6MjA5MTE3MzI3MX0.pi9jWOSzWZe0I_P5a-pY_4JvTqKtsRF1Bn0zLW3coSM";
+
+function supaGet(table, params) {
+  return fetch(SUPA_URL + "/rest/v1/" + table + "?" + (params || "order=id.desc&limit=200"), {
+    headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY }
+  }).then(r => r.json()).catch(() => []);
+}
+
 const DashboardTab = () => {
   const { useState: us, useEffect: ue } = React;
-  const [data, setData] = us({ users: [], sessions: [], pageviews: [], leads: [] });
-  const [view, setView] = us("sessions"); // sessions | users | pages
+  const [data, setData] = us({ users: [], sessions: [], pageviews: [] });
+  const [view, setView] = us("sessions");
+  const [source, setSource] = us("cloud"); // cloud | local
+  const [loading, setLoading] = us(true);
 
   ue(() => {
-    const load = () => {
+    const loadCloud = async () => {
+      try {
+        const [users, sessions, pageviews] = await Promise.all([
+          supaGet("tracked_users", "order=first_seen.desc&limit=200"),
+          supaGet("sessions", "order=start_time.desc&limit=200"),
+          supaGet("pageviews", "order=created_at.desc&limit=500")
+        ]);
+        setData({ users, sessions, pageviews });
+      } catch(e) {
+        // Fallback to localStorage
+        try {
+          const raw = localStorage.getItem("solar_tracker_db");
+          if (raw) setData(JSON.parse(raw));
+          setSource("local");
+        } catch(e2) {}
+      }
+      setLoading(false);
+    };
+    const loadLocal = () => {
       try {
         const raw = localStorage.getItem("solar_tracker_db");
         if (raw) setData(JSON.parse(raw));
       } catch(e) {}
+      setLoading(false);
     };
-    load();
-    const iv = setInterval(load, 3000);
+
+    if (source === "cloud") loadCloud(); else loadLocal();
+    const iv = setInterval(() => { if (source === "cloud") loadCloud(); else loadLocal(); }, 5000);
     return () => clearInterval(iv);
-  }, []);
+  }, [source]);
 
   const users = data.users || [];
   const sessions = data.sessions || [];
   const pageviews = data.pageviews || [];
-  const leads = data.leads || [];
 
   // Stats
   const uniqueUsers = users.length;
@@ -909,9 +939,13 @@ const DashboardTab = () => {
   };
 
   const clearData = () => {
-    if (confirm("Clear all tracking data? This cannot be undone.")) {
-      localStorage.removeItem("solar_tracker_db");
-      setData({ users: [], sessions: [], pageviews: [], leads: [] });
+    if (source === "local") {
+      if (confirm("Clear local tracking data? This cannot be undone.")) {
+        localStorage.removeItem("solar_tracker_db");
+        setData({ users: [], sessions: [], pageviews: [] });
+      }
+    } else {
+      alert("Cloud data can only be cleared from the Supabase dashboard.\nThis protects against accidental deletion.");
     }
   };
 
@@ -925,13 +959,23 @@ const DashboardTab = () => {
             <span className="text-xs text-slate-500 ml-1">Admin Dashboard — Live Data (v2.0)</span>
           </div>
           <div className="flex items-center gap-2">
-            {activeTabCount > 0 && (
+            <div className="flex border border-[#1a2535] rounded-lg overflow-hidden">
+              <button onClick={() => setSource("cloud")}
+                className={`text-[10px] px-2.5 py-1 transition-all ${source === "cloud" ? "bg-orange-500/15 text-orange-400" : "text-slate-600 hover:text-slate-400"}`}>
+                Cloud
+              </button>
+              <button onClick={() => setSource("local")}
+                className={`text-[10px] px-2.5 py-1 transition-all ${source === "local" ? "bg-blue-500/15 text-blue-400" : "text-slate-600 hover:text-slate-400"}`}>
+                Local
+              </button>
+            </div>
+            {activeTabCount > 0 && source === "local" && (
               <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
                 {activeTabCount} tab{activeTabCount !== 1 ? "s" : ""} active
               </span>
             )}
-            <span className="text-[10px] text-slate-600">Auto-refresh 3s</span>
-            <Badge color="green">Live</Badge>
+            <span className="text-[10px] text-slate-600">Refresh 5s</span>
+            <Badge color={source === "cloud" ? "orange" : "green"}>{source === "cloud" ? "Cloud" : "Local"}</Badge>
           </div>
         </div>
 
@@ -1082,7 +1126,7 @@ const DashboardTab = () => {
               <tbody>
                 {[...users].reverse().map((u, i) => (
                   <tr key={i} className="border-b border-[#111c2e] hover:bg-white/[.02] transition-colors">
-                    <td className="px-5 py-3 text-slate-300 font-mono text-[10px]">{(u.id || "").substring(0, 12)}...</td>
+                    <td className="px-5 py-3 text-slate-300 font-mono text-[10px]">{(u.user_id || u.id || "").substring(0, 12)}...</td>
                     <td className="px-5 py-3 text-slate-300">{u.device_type === "mobile" ? "📱" : "💻"} {u.device_type || "desktop"}</td>
                     <td className="px-5 py-3 text-slate-500 text-[10px]">{fmtDate(u.first_seen)}</td>
                     <td className="px-5 py-3 text-slate-500 text-[10px]">{fmtDate(u.last_seen)}</td>

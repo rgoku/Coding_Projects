@@ -1,0 +1,7 @@
+# Claude Code local settings
+.claude/
+
+# Temp files
+NUL
+temp_extract.txt
+create_css.py

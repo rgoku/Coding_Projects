@@ -839,27 +839,29 @@ function supaGet(table, params) {
   }).then(r => r.json()).catch(() => []);
 }
 
+const STEPS_ORDER = ['module', 'string', 'tracker', 'combiner', 'cabling', 'inverter'];
+
 const DashboardTab = () => {
   const { useState: us, useEffect: ue } = React;
-  const [data, setData] = us({ users: [], sessions: [], pageviews: [] });
+  const [data, setData] = us({ users: [], sessions: [], pageviews: [], events: [] });
   const [view, setView] = us("sessions");
-  const [source, setSource] = us("cloud"); // cloud | local
+  const [source, setSource] = us("cloud");
   const [loading, setLoading] = us(true);
 
   ue(() => {
     const loadCloud = async () => {
       try {
-        const [users, sessions, pageviews] = await Promise.all([
+        const [users, sessions, pageviews, events] = await Promise.all([
           supaGet("tracked_users", "order=first_seen.desc&limit=200"),
           supaGet("sessions", "order=start_time.desc&limit=200"),
-          supaGet("pageviews", "order=created_at.desc&limit=500")
+          supaGet("pageviews", "order=created_at.desc&limit=500"),
+          supaGet("events", "order=created_at.desc&limit=1000")
         ]);
-        setData({ users, sessions, pageviews });
+        setData({ users: Array.isArray(users) ? users : [], sessions: Array.isArray(sessions) ? sessions : [], pageviews: Array.isArray(pageviews) ? pageviews : [], events: Array.isArray(events) ? events : [] });
       } catch(e) {
-        // Fallback to localStorage
         try {
           const raw = localStorage.getItem("solar_tracker_db");
-          if (raw) setData(JSON.parse(raw));
+          if (raw) setData({ ...JSON.parse(raw), events: [] });
           setSource("local");
         } catch(e2) {}
       }
@@ -868,7 +870,7 @@ const DashboardTab = () => {
     const loadLocal = () => {
       try {
         const raw = localStorage.getItem("solar_tracker_db");
-        if (raw) setData(JSON.parse(raw));
+        if (raw) setData({ ...JSON.parse(raw), events: [] });
       } catch(e) {}
       setLoading(false);
     };
@@ -881,35 +883,68 @@ const DashboardTab = () => {
   const users = data.users || [];
   const sessions = data.sessions || [];
   const pageviews = data.pageviews || [];
-
-  // Stats
-  const uniqueUsers = users.length;
-  const totalSessions = sessions.length;
-  const totalPvs = pageviews.length;
-  const activeSessions = sessions.filter(s => s.is_active).length;
+  const events = data.events || [];
   const activeTabCount = parseInt(localStorage.getItem("solar_tab_count") || "0");
-  const avgDur = sessions.length > 0
-    ? Math.round(sessions.reduce((a, s) => a + (s.duration_seconds || 0), 0) / sessions.length)
-    : 0;
-  const designerUse = sessions.filter(s => s.used_designer).length;
-  const designerPct = totalSessions > 0 ? ((designerUse / totalSessions) * 100).toFixed(0) : 0;
 
-  // Score a session
+  // Core stats
+  const totalSessions = sessions.length;
+  const activeSessions = sessions.filter(s => s.is_active).length;
+  const avgDur = sessions.length > 0
+    ? Math.round(sessions.reduce((a, s) => a + (s.duration_seconds || 0), 0) / sessions.length) : 0;
+  const designerUse = sessions.filter(s => s.used_designer).length;
+
   const scoreSession = (sess) => {
     if (!sess) return { score: 0, label: "COLD" };
     let score = 0;
     const dur = sess.duration_seconds || 0;
     const pages = sess.pages_viewed || 0;
-    if (dur >= 180) score += 35;
-    else if (dur >= 60) score += 20;
-    else if (dur >= 30) score += 10;
-    if (pages >= 5) score += 25;
-    else if (pages >= 3) score += 15;
-    else if (pages >= 2) score += 8;
+    if (dur >= 180) score += 35; else if (dur >= 60) score += 20; else if (dur >= 30) score += 10;
+    if (pages >= 5) score += 25; else if (pages >= 3) score += 15; else if (pages >= 2) score += 8;
     if (sess.used_designer) score += 30;
     score = Math.min(score, 100);
-    return { score, label: score >= 70 ? "HOT" : (score >= 40 ? "WARM" : "COLD") };
+    return { score, label: score >= 70 ? "HOT" : score >= 40 ? "WARM" : "COLD" };
   };
+
+  const labelStyle = l =>
+    l === "HOT"  ? "bg-red-500/10 text-red-400 border-red-500/20" :
+    l === "WARM" ? "bg-orange-500/10 text-orange-400 border-orange-500/20" :
+                   "bg-blue-500/10 text-blue-400 border-blue-500/20";
+  const barColor = l => l === "HOT" ? "bg-red-500" : l === "WARM" ? "bg-orange-500" : "bg-blue-500";
+  const fmtDate = iso => { if (!iso) return "—"; const d = new Date(iso); return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); };
+  const fmtDur = s => { if (!s || s < 1) return "0s"; if (s < 60) return s + "s"; return Math.floor(s / 60) + "m " + (s % 60) + "s"; };
+
+  // Step funnel from events
+  const stepEvents = events.filter(e => e.event_name === "step_view");
+  const stepCounts = {};
+  STEPS_ORDER.forEach(s => { stepCounts[s] = 0; });
+  stepEvents.forEach(e => { const s = e.properties?.step || e.properties?.step; if (s && stepCounts[s] !== undefined) stepCounts[s]++; });
+  const maxStepCount = Math.max(1, ...Object.values(stepCounts));
+  const avgTimeOnStep = {};
+  STEPS_ORDER.forEach(step => {
+    const times = stepEvents.filter(e => e.properties?.prev_step === step).map(e => e.properties?.time_on_prev_seconds || 0).filter(t => t > 0);
+    avgTimeOnStep[step] = times.length > 0 ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0;
+  });
+
+  // A/B comparison
+  const variants = ["control", "variant_a"];
+  const abStats = variants.map(v => {
+    const vSessions = sessions.filter(s => s.ab_variant === v);
+    const vEvents = stepEvents.filter(e => e.ab_variant === v);
+    const avgD = vSessions.length > 0 ? Math.round(vSessions.reduce((a, s) => a + (s.duration_seconds || 0), 0) / vSessions.length) : 0;
+    const uniqueSteps = {};
+    vEvents.forEach(e => { const s = e.properties?.step; if (s) uniqueSteps[s] = (uniqueSteps[s] || 0) + 1; });
+    const totalStepViews = Object.values(uniqueSteps).reduce((a, b) => a + b, 0);
+    const avgSteps = vEvents.length > 0 ? (totalStepViews / Math.max(1, vSessions.length)).toFixed(1) : "0";
+    const designerPct = vSessions.length > 0 ? Math.round((vSessions.filter(s => s.used_designer).length / vSessions.length) * 100) : 0;
+    const demoCount = events.filter(e => e.ab_variant === v && e.event_name === "demo_view").length;
+    return { variant: v, sessions: vSessions.length, avgDur: avgD, avgSteps, designerPct, demoCount };
+  });
+
+  // Demo event counts
+  const demoCounts = { tracker: 0, combiner: 0, cables: 0 };
+  events.filter(e => e.event_name === "demo_view").forEach(e => {
+    const d = e.properties?.demo; if (d && demoCounts[d] !== undefined) demoCounts[d]++;
+  });
 
   // Top pages
   const pageCounts = {};
@@ -917,35 +952,14 @@ const DashboardTab = () => {
   const topPages = Object.entries(pageCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const maxViews = topPages.length > 0 ? topPages[0][1] : 1;
 
-  // Device breakdown
   const devices = {};
   sessions.forEach(s => { const d = s.device_type || "desktop"; devices[d] = (devices[d] || 0) + 1; });
 
-  const labelStyle = l =>
-    l === "HOT"  ? "bg-red-500/10 text-red-400 border-red-500/20" :
-    l === "WARM" ? "bg-orange-500/10 text-orange-400 border-orange-500/20" :
-                   "bg-blue-500/10 text-blue-400 border-blue-500/20";
-  const barColor = l => l === "HOT" ? "bg-red-500" : l === "WARM" ? "bg-orange-500" : "bg-blue-500";
-
-  const fmtDate = iso => {
-    if (!iso) return "—";
-    const d = new Date(iso);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  };
-
-  const fmtDur = s => {
-    if (s < 60) return s + "s";
-    return Math.floor(s / 60) + "m " + (s % 60) + "s";
-  };
-
   const clearData = () => {
     if (source === "local") {
-      if (confirm("Clear local tracking data? This cannot be undone.")) {
-        localStorage.removeItem("solar_tracker_db");
-        setData({ users: [], sessions: [], pageviews: [] });
-      }
+      if (confirm("Clear local tracking data?")) { localStorage.removeItem("solar_tracker_db"); setData({ users: [], sessions: [], pageviews: [], events: [] }); }
     } else {
-      alert("Cloud data can only be cleared from the Supabase dashboard.\nThis protects against accidental deletion.");
+      alert("Cloud data can only be cleared from the Supabase dashboard.");
     }
   };
 
@@ -956,147 +970,101 @@ const DashboardTab = () => {
         <div className="bg-[#060d16] px-5 py-3 border-b border-[#1a2535] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"/><span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"/><span className="w-2.5 h-2.5 rounded-full bg-[#28c840]"/></div>
-            <span className="text-xs text-slate-500 ml-1">Admin Dashboard — Live Data (v2.0)</span>
+            <span className="text-xs text-slate-500 ml-1">Analytics Dashboard — Live (5s refresh)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex border border-[#1a2535] rounded-lg overflow-hidden">
-              <button onClick={() => setSource("cloud")}
-                className={`text-[10px] px-2.5 py-1 transition-all ${source === "cloud" ? "bg-orange-500/15 text-orange-400" : "text-slate-600 hover:text-slate-400"}`}>
-                Cloud
-              </button>
-              <button onClick={() => setSource("local")}
-                className={`text-[10px] px-2.5 py-1 transition-all ${source === "local" ? "bg-blue-500/15 text-blue-400" : "text-slate-600 hover:text-slate-400"}`}>
-                Local
-              </button>
+              <button onClick={() => setSource("cloud")} className={`text-[10px] px-2.5 py-1 transition-all ${source === "cloud" ? "bg-orange-500/15 text-orange-400" : "text-slate-600 hover:text-slate-400"}`}>Cloud</button>
+              <button onClick={() => setSource("local")} className={`text-[10px] px-2.5 py-1 transition-all ${source === "local" ? "bg-blue-500/15 text-blue-400" : "text-slate-600 hover:text-slate-400"}`}>Local</button>
             </div>
-            {activeTabCount > 0 && source === "local" && (
-              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-                {activeTabCount} tab{activeTabCount !== 1 ? "s" : ""} active
-              </span>
-            )}
-            <span className="text-[10px] text-slate-600">Refresh 5s</span>
+            {activeSessions > 0 && <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">{activeSessions} live</span>}
             <Badge color={source === "cloud" ? "orange" : "green"}>{source === "cloud" ? "Cloud" : "Local"}</Badge>
           </div>
         </div>
 
         <div className="bg-[#080f18] p-6 space-y-6">
-          {/* Stats row 1 */}
-          <div className="grid grid-cols-4 gap-3">
+
+          {/* Top stats */}
+          <div className="grid grid-cols-5 gap-3">
             {[
-              { label: "Unique Users", val: uniqueUsers, color: "text-purple-400", icon: "👤" },
-              { label: "Total Sessions", val: totalSessions, color: "text-sky-400", icon: "🔗" },
-              { label: "Total Pageviews", val: totalPvs, color: "text-emerald-400", icon: "📄" },
-              { label: "Active Now", val: activeSessions, color: activeSessions > 0 ? "text-green-400" : "text-slate-500", icon: "🟢" },
+              { label: "Users", val: users.length, color: "text-purple-400", icon: "👤" },
+              { label: "Sessions", val: totalSessions, color: "text-sky-400", icon: "🔗" },
+              { label: "Pageviews", val: pageviews.length, color: "text-emerald-400", icon: "📄" },
+              { label: "Events", val: events.length, color: "text-yellow-400", icon: "⚡" },
+              { label: "Live Now", val: activeSessions, color: activeSessions > 0 ? "text-green-400" : "text-slate-500", icon: "🟢" },
             ].map(s => (
               <div key={s.label} className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-slate-500 uppercase tracking-widest">{s.label}</span>
-                  <span className="text-base">{s.icon}</span>
+                  <span className="text-[10px] text-slate-500 uppercase tracking-widest">{s.label}</span>
+                  <span className="text-sm">{s.icon}</span>
                 </div>
                 <div className={`text-2xl font-bold ${s.color}`}>{s.val}</div>
               </div>
             ))}
           </div>
 
-          {/* Stats row 2 */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
-              <div className="text-xs text-slate-500 uppercase tracking-widest mb-2">Avg Session Duration</div>
-              <div className="text-xl font-bold text-orange-400">{fmtDur(avgDur)}</div>
-            </div>
-            <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
-              <div className="text-xs text-slate-500 uppercase tracking-widest mb-2">Designer Tool Usage</div>
-              <div className="text-xl font-bold text-cyan-400">{designerPct}%</div>
-              <div className="text-[10px] text-slate-600 mt-1">{designerUse} of {totalSessions} sessions</div>
-            </div>
-            <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
-              <div className="text-xs text-slate-500 uppercase tracking-widest mb-2">Device Breakdown</div>
-              <div className="flex items-center gap-3 mt-1">
-                {Object.entries(devices).map(([d, c]) => (
-                  <div key={d} className="text-center">
-                    <div className="text-sm font-bold text-white">{c}</div>
-                    <div className="text-[10px] text-slate-500">{d === "desktop" ? "💻" : d === "mobile" ? "📱" : "📱"} {d}</div>
-                  </div>
-                ))}
-                {Object.keys(devices).length === 0 && <div className="text-xs text-slate-600">No data</div>}
-              </div>
-            </div>
-          </div>
-
           {/* View switcher */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {[
               { id: "sessions", label: "Sessions" },
+              { id: "funnel", label: "Step Funnel" },
+              { id: "ab", label: "A/B Test" },
+              { id: "events", label: "Events" },
               { id: "users", label: "Users" },
               { id: "pages", label: "Pages" },
             ].map(v => (
               <button key={v.id} onClick={() => setView(v.id)}
                 className={`text-xs px-3 py-1.5 rounded-lg transition-all ${
-                  view === v.id
-                    ? "bg-orange-500/10 text-orange-400 border border-orange-500/20"
-                    : "text-slate-500 border border-[#1a2535] hover:text-slate-300"
+                  view === v.id ? "bg-orange-500/10 text-orange-400 border border-orange-500/20"
+                                : "text-slate-500 border border-[#1a2535] hover:text-slate-300"
                 }`}>{v.label}</button>
             ))}
             <div className="flex-1" />
-            <button onClick={clearData} className="text-xs text-red-400 border border-red-500/20 bg-red-500/5 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors">
-              Clear All Data
-            </button>
+            <button onClick={clearData} className="text-xs text-red-400 border border-red-500/20 bg-red-500/5 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors">Clear</button>
           </div>
 
-          {/* Sessions view */}
+          {/* ── SESSIONS ── */}
           {view === "sessions" && (
           <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl overflow-hidden">
             <div className="px-5 py-3.5 border-b border-[#1a2535]">
               <span className="text-sm font-semibold text-white">Recent Sessions</span>
-              <span className="text-xs text-slate-600 ml-2">({sessions.length} total)</span>
+              <span className="text-xs text-slate-600 ml-2">({sessions.length})</span>
             </div>
             {sessions.length === 0 ? (
-              <div className="px-5 py-8 text-center">
-                <div className="text-2xl mb-2">📭</div>
-                <div className="text-sm text-slate-400">No sessions yet</div>
-                <div className="text-xs text-slate-600 mt-1">Visit your solar education site to start tracking</div>
-              </div>
+              <div className="px-5 py-8 text-center text-sm text-slate-400">No sessions yet — visit the education page to start</div>
             ) : (
             <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[#1a2535]">
-                  {["Status","User","Device","Pages","Duration","Designer","Score","Started"].map(h => (
-                    <th key={h} className="text-left px-4 py-2.5 text-slate-500 font-semibold uppercase tracking-widest text-[10px]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
+              <thead><tr className="border-b border-[#1a2535]">
+                {["Status","Variant","Device","Pages","Duration","Designer","Score","Started"].map(h => (
+                  <th key={h} className="text-left px-4 py-2.5 text-slate-500 font-semibold uppercase tracking-widest text-[10px]">{h}</th>
+                ))}
+              </tr></thead>
               <tbody>
-                {[...sessions].reverse().slice(0, 25).map((s, i) => {
+                {[...sessions].reverse().slice(0, 30).map((s, i) => {
                   const sc = scoreSession(s);
-                  const uid = (s.user_id || "").substring(0, 8);
                   return (
-                  <tr key={i} className="border-b border-[#111c2e] hover:bg-white/[.02] transition-colors">
-                    <td className="px-4 py-3">
-                      {s.is_active
-                        ? <span className="inline-flex items-center gap-1 text-emerald-400"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>Live</span>
-                        : <span className="text-slate-600">Ended</span>}
-                    </td>
-                    <td className="px-4 py-3 text-slate-400 font-mono text-[10px]">{uid}...</td>
-                    <td className="px-4 py-3 text-slate-200">
-                      {s.device_type === "mobile" ? "📱" : s.device_type === "tablet" ? "📱" : "💻"} {s.device_type || "desktop"}
-                    </td>
-                    <td className="px-4 py-3 text-slate-300">{s.pages_viewed || 0}</td>
-                    <td className="px-4 py-3 text-slate-300">{fmtDur(s.duration_seconds || 0)}</td>
-                    <td className="px-4 py-3">
-                      {s.used_designer
-                        ? <span className="text-emerald-400">✓</span>
-                        : <span className="text-slate-600">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 bg-[#1a2535] rounded-full h-1.5">
-                          <div className={`h-1.5 rounded-full ${barColor(sc.label)}`} style={{width:`${sc.score}%`}}/>
+                    <tr key={i} className="border-b border-[#111c2e] hover:bg-white/[.02] transition-colors">
+                      <td className="px-4 py-3">
+                        {s.is_active ? <span className="inline-flex items-center gap-1 text-emerald-400"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>Live</span>
+                                     : <span className="text-slate-600">Ended</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${s.ab_variant === "variant_a" ? "bg-violet-500/10 text-violet-400 border-violet-500/20" : "bg-slate-500/10 text-slate-400 border-slate-500/20"}`}>
+                          {s.ab_variant || "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-200">{s.device_type === "mobile" ? "📱" : "💻"} {s.device_type || "desktop"}</td>
+                      <td className="px-4 py-3 text-slate-300">{s.pages_viewed || 0}</td>
+                      <td className="px-4 py-3 text-slate-300">{fmtDur(s.duration_seconds || 0)}</td>
+                      <td className="px-4 py-3">{s.used_designer ? <span className="text-emerald-400">✓</span> : <span className="text-slate-600">—</span>}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 bg-[#1a2535] rounded-full h-1.5"><div className={`h-1.5 rounded-full ${barColor(sc.label)}`} style={{width:`${sc.score}%`}}/></div>
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${labelStyle(sc.label)}`}>{sc.label}</span>
                         </div>
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${labelStyle(sc.label)}`}>{sc.label}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 text-[10px]">{fmtDate(s.start_time)}</td>
-                  </tr>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 text-[10px]">{fmtDate(s.start_time)}</td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -1105,24 +1073,169 @@ const DashboardTab = () => {
           </div>
           )}
 
-          {/* Users view */}
+          {/* ── STEP FUNNEL ── */}
+          {view === "funnel" && (
+          <div className="space-y-4">
+            <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-5">
+              <div className="text-sm font-semibold text-white mb-1">Module Step Funnel</div>
+              <div className="text-xs text-slate-500 mb-5">How many unique step_view events fired per step. Avg time shown is how long users spent on that step before moving on.</div>
+              <div className="space-y-3">
+                {STEPS_ORDER.map((step, i) => {
+                  const count = stepCounts[step] || 0;
+                  const pct = maxStepCount > 0 ? Math.round((count / maxStepCount) * 100) : 0;
+                  const dropPct = i > 0 && stepCounts[STEPS_ORDER[i-1]] > 0
+                    ? Math.round((1 - count / stepCounts[STEPS_ORDER[i-1]]) * 100) : null;
+                  return (
+                    <div key={step}>
+                      <div className="flex items-center gap-3 mb-1">
+                        <div className="text-[10px] text-slate-400 w-5 font-bold text-right">{i+1}</div>
+                        <div className="text-xs text-white font-semibold capitalize w-20">{step}</div>
+                        <div className="flex-1 bg-[#1a2535] rounded-full h-3">
+                          <div className="bg-gradient-to-r from-sky-500 to-sky-400 h-3 rounded-full transition-all" style={{width:`${pct}%`}}/>
+                        </div>
+                        <div className="text-xs text-slate-300 w-8 text-right font-semibold">{count}</div>
+                        <div className="text-[10px] text-slate-500 w-16 text-right">{avgTimeOnStep[step] > 0 ? `avg ${fmtDur(avgTimeOnStep[step])}` : ""}</div>
+                        {dropPct !== null && dropPct > 0 && (
+                          <div className={`text-[10px] w-16 text-right font-semibold ${dropPct >= 50 ? "text-red-400" : dropPct >= 25 ? "text-orange-400" : "text-slate-500"}`}>
+                            -{dropPct}% drop
+                          </div>
+                        )}
+                        {dropPct !== null && dropPct === 0 && <div className="w-16"/>}
+                        {i === 0 && <div className="w-16"/>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Tracker Demo Views", val: demoCounts.tracker, color: "text-sky-400" },
+                { label: "Combiner Demo Views", val: demoCounts.combiner, color: "text-orange-400" },
+                { label: "Cables Demo Views", val: demoCounts.cables, color: "text-red-400" },
+              ].map(s => (
+                <div key={s.label} className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-4">
+                  <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">{s.label}</div>
+                  <div className={`text-2xl font-bold ${s.color}`}>{s.val}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          )}
+
+          {/* ── A/B TEST ── */}
+          {view === "ab" && (
+          <div className="space-y-4">
+            <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-5">
+              <div className="text-sm font-semibold text-white mb-1">A/B Variant Comparison</div>
+              <div className="text-xs text-slate-500 mb-5">Variants are assigned 50/50 on first visit and persist via localStorage. Requires <code className="text-sky-400">ab_variant</code> column in your Supabase sessions table.</div>
+              <div className="grid grid-cols-2 gap-4">
+                {abStats.map(v => (
+                  <div key={v.variant} className={`rounded-xl border p-5 ${v.variant === "variant_a" ? "border-violet-500/30 bg-violet-500/5" : "border-slate-500/30 bg-slate-500/5"}`}>
+                    <div className={`text-xs font-bold uppercase tracking-widest mb-4 ${v.variant === "variant_a" ? "text-violet-400" : "text-slate-400"}`}>{v.variant}</div>
+                    <div className="space-y-3">
+                      {[
+                        { label: "Sessions", val: v.sessions, color: "text-white" },
+                        { label: "Avg Duration", val: fmtDur(v.avgDur), color: "text-orange-400" },
+                        { label: "Avg Steps Viewed", val: v.avgSteps, color: "text-sky-400" },
+                        { label: "Designer Use", val: v.designerPct + "%", color: "text-emerald-400" },
+                        { label: "Demo Views", val: v.demoCount, color: "text-yellow-400" },
+                      ].map(m => (
+                        <div key={m.label} className="flex justify-between items-center">
+                          <span className="text-xs text-slate-500">{m.label}</span>
+                          <span className={`text-sm font-bold ${m.color}`}>{m.val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {abStats.every(v => v.sessions === 0) && (
+                <div className="mt-4 p-4 rounded-xl bg-[#080f18] border border-[#1a2535] text-xs text-slate-500">
+                  No variant data yet. Make sure to add <code className="text-sky-400">ab_variant TEXT</code> column to your Supabase <code className="text-sky-400">sessions</code> table, then visit the education page.
+                </div>
+              )}
+            </div>
+
+            <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-5">
+              <div className="text-xs font-semibold text-white mb-3">Supabase Setup — Run Once</div>
+              <pre className="bg-[#080f18] text-[#a8c0d6] p-4 rounded-lg text-[11px] leading-relaxed font-mono overflow-x-auto">{`-- Add A/B variant to sessions
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ab_variant TEXT;
+
+-- New events table for granular tracking
+CREATE TABLE IF NOT EXISTS events (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id  TEXT,
+  user_id     TEXT,
+  event_name  TEXT NOT NULL,
+  properties  JSONB DEFAULT '{}',
+  ab_variant  TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_events_session  ON events (session_id);
+CREATE INDEX IF NOT EXISTS idx_events_name     ON events (event_name);
+CREATE INDEX IF NOT EXISTS idx_events_variant  ON events (ab_variant);
+CREATE INDEX IF NOT EXISTS idx_events_created  ON events (created_at DESC);`}</pre>
+            </div>
+          </div>
+          )}
+
+          {/* ── EVENTS ── */}
+          {view === "events" && (
+          <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[#1a2535]">
+              <span className="text-sm font-semibold text-white">Event Log</span>
+              <span className="text-xs text-slate-600 ml-2">({events.length} total)</span>
+            </div>
+            {events.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-slate-400">No events yet — step navigation and demo clicks will appear here</div>
+            ) : (
+            <table className="w-full text-xs">
+              <thead><tr className="border-b border-[#1a2535]">
+                {["Event","Variant","Properties","When"].map(h => (
+                  <th key={h} className="text-left px-4 py-2.5 text-slate-500 font-semibold uppercase tracking-widest text-[10px]">{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {events.slice(0, 50).map((e, i) => (
+                  <tr key={i} className="border-b border-[#111c2e] hover:bg-white/[.02] transition-colors">
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                        e.event_name === "step_view" ? "bg-sky-500/10 text-sky-400 border-sky-500/20" :
+                        e.event_name === "demo_view" ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" :
+                        "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                      }`}>{e.event_name}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] ${e.ab_variant === "variant_a" ? "text-violet-400" : "text-slate-500"}`}>{e.ab_variant || "—"}</span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-400 font-mono text-[10px] max-w-xs truncate">
+                      {JSON.stringify(e.properties || {})}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 text-[10px]">{fmtDate(e.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            )}
+          </div>
+          )}
+
+          {/* ── USERS ── */}
           {view === "users" && (
           <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl overflow-hidden">
             <div className="px-5 py-3.5 border-b border-[#1a2535]">
               <span className="text-sm font-semibold text-white">Unique Users</span>
-              <span className="text-xs text-slate-600 ml-2">({users.length} total)</span>
+              <span className="text-xs text-slate-600 ml-2">({users.length})</span>
             </div>
-            {users.length === 0 ? (
-              <div className="px-5 py-8 text-center text-sm text-slate-400">No users yet</div>
-            ) : (
+            {users.length === 0 ? <div className="px-5 py-8 text-center text-sm text-slate-400">No users yet</div> : (
             <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[#1a2535]">
-                  {["User ID","Device","First Seen","Last Seen","Sessions","Pageviews"].map(h => (
-                    <th key={h} className="text-left px-5 py-2.5 text-slate-500 font-semibold uppercase tracking-widest text-[10px]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
+              <thead><tr className="border-b border-[#1a2535]">
+                {["User ID","Device","First Seen","Last Seen","Sessions","Pageviews"].map(h => (
+                  <th key={h} className="text-left px-5 py-2.5 text-slate-500 font-semibold uppercase tracking-widest text-[10px]">{h}</th>
+                ))}
+              </tr></thead>
               <tbody>
                 {[...users].reverse().map((u, i) => (
                   <tr key={i} className="border-b border-[#111c2e] hover:bg-white/[.02] transition-colors">
@@ -1140,20 +1253,16 @@ const DashboardTab = () => {
           </div>
           )}
 
-          {/* Pages view */}
+          {/* ── PAGES ── */}
           {view === "pages" && (
           <div className="bg-[#0d1520] border border-[#1a2535] rounded-xl p-5">
             <div className="text-sm font-semibold text-white mb-4">Top Pages by Traffic</div>
-            {topPages.length === 0 ? (
-              <div className="text-xs text-slate-600 text-center py-4">No pageview data yet</div>
-            ) : (
+            {topPages.length === 0 ? <div className="text-xs text-slate-600 text-center py-4">No data yet</div> : (
             <div className="space-y-3">
               {topPages.map(([url, views]) => (
                 <div key={url} className="flex items-center gap-3">
                   <div className="text-xs text-slate-400 w-56 truncate font-mono">{url}</div>
-                  <div className="flex-1 bg-[#1a2535] rounded-full h-2">
-                    <div className="bg-gradient-to-r from-orange-500 to-orange-400 h-2 rounded-full transition-all" style={{width:`${(views/maxViews)*100}%`}}/>
-                  </div>
+                  <div className="flex-1 bg-[#1a2535] rounded-full h-2"><div className="bg-gradient-to-r from-orange-500 to-orange-400 h-2 rounded-full transition-all" style={{width:`${(views/maxViews)*100}%`}}/></div>
                   <div className="text-xs text-slate-300 w-10 text-right font-semibold">{views}</div>
                 </div>
               ))}

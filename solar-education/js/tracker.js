@@ -167,6 +167,15 @@
   var userId = getUserId();
   window.__solarUserId = userId;
 
+  // ── A/B VARIANT ASSIGNMENT ────────────────────────────────────────────
+  var AB_KEY = "solar_ab_variant";
+  var abVariant = localStorage.getItem(AB_KEY);
+  if (!abVariant) {
+    abVariant = Math.random() < 0.5 ? "control" : "variant_a";
+    localStorage.setItem(AB_KEY, abVariant);
+  }
+  window.__solarABVariant = abVariant;
+
   // Register user in DB if not already present
   function ensureUser(db) {
     var existing = db.users.find(function (u) { return u.id === userId; });
@@ -358,7 +367,8 @@
       used_designer: false,
       page_list: [],
       active_tabs: 1,
-      is_active: true
+      is_active: true,
+      ab_variant: abVariant
     };
 
     db.sessions.push({ id: sessionId, user_id: userId, device_id: deviceId, device_type: sessionData.device_type, referrer: sessionData.referrer, start_time: sessionData.start_time, end_time: null, duration_seconds: 0, pages_viewed: 0, used_designer: false, page_list: [], active_tabs: 1, is_active: true });
@@ -611,10 +621,25 @@
     return { score: score, label: label };
   }
 
+  // ── EVENT TRACKING ────────────────────────────────────────────────────
+
+  function trackEvent(name, props) {
+    supaPost("events", {
+      session_id: sessionId,
+      user_id: userId,
+      event_name: name,
+      properties: props || {},
+      ab_variant: abVariant,
+      created_at: isoNow()
+    });
+  }
+
   // ── PUBLIC API ────────────────────────────────────────────────────────
 
   window.solarTracker = {
     markDesigner: markDesigner,
+    trackEvent: trackEvent,
+    getVariant: function () { return abVariant; },
     getUserId: function () { return userId; },
     getSessionId: function () { return sessionId; },
     getDeviceId: function () { return deviceId; },

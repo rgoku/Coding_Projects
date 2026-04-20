@@ -6,8 +6,9 @@
   left: 0;
   right: 0;
   height: 70px;
-  background: linear-gradient(180deg, rgba(10,22,40,0.98) 0%, rgba(10,22,40,0.9) 100%);
-  border-bottom: 1px solid rgba(56,189,248,0.15);
+  background: linear-gradient(180deg, rgba(8,15,30,0.99) 0%, rgba(10,22,40,0.92) 100%);
+  border-bottom: 1px solid rgba(56,189,248,0.35);
+  box-shadow: 0 1px 0 rgba(255,42,160,0.08), 0 4px 20px rgba(0,0,0,0.4);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -31,8 +32,8 @@
   justify-content: center;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 0 20px rgba(255,20,147,0.6), 0 0 40px rgba(255,20,147,0.3), inset 0 0 0 1px rgba(255,20,147,0.3);
-  border: 1px solid rgba(255,20,147,0.4);
+  box-shadow: 0 0 25px rgba(255,42,160,0.8), 0 0 55px rgba(255,42,160,0.4), 0 0 80px rgba(255,42,160,0.15), inset 0 0 0 1px rgba(255,42,160,0.5);
+  border: 1px solid rgba(255,42,160,0.6);
 }
 
 .logo-icon img {
@@ -44,13 +45,19 @@
 .logo-text {
   font-size: 20px;
   font-weight: 700;
-  color: #fff;
+  background: linear-gradient(135deg, #ffffff, #ff9dd8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   letter-spacing: 0.5px;
 }
 
 .logo-subtitle {
   font-size: 11px;
-  color: #ff69b4;
+  background: linear-gradient(135deg, #ff2aa0, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   font-weight: 600;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -60,10 +67,11 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(30,41,59,0.6);
+  background: rgba(30,41,59,0.7);
   padding: 6px 8px;
   border-radius: 40px;
-  border: 1px solid rgba(56,189,248,0.1);
+  border: 1px solid rgba(56,189,248,0.3);
+  box-shadow: 0 0 20px rgba(56,189,248,0.08);
 }
 
 .step {
@@ -98,9 +106,9 @@
 }
 
 .step.active {
-  background: linear-gradient(135deg, rgba(255,20,147,0.2), rgba(255,105,180,0.1));
-  border-color: rgba(255,20,147,0.4);
-  box-shadow: 0 4px 15px rgba(255,20,147,0.2);
+  background: linear-gradient(135deg, rgba(255,42,160,0.28), rgba(255,105,180,0.14));
+  border-color: rgba(255,42,160,0.6);
+  box-shadow: 0 4px 18px rgba(255,42,160,0.35), 0 0 8px rgba(255,42,160,0.15);
 }
 
 .step-number {
@@ -117,8 +125,9 @@
 }
 
 .step.active .step-number {
-  background: linear-gradient(135deg, #ff1493, #ff69b4);
+  background: linear-gradient(135deg, #ff2aa0, #ff69b4);
   color: #fff;
+  box-shadow: 0 0 10px rgba(255,42,160,0.6);
 }
 
 .step-text {
@@ -164,15 +173,17 @@
 }
 
 .header-btn:hover {
-  background: rgba(56,189,248,0.15);
+  background: rgba(56,189,248,0.18);
   color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(56,189,248,0.15);
+  box-shadow: 0 4px 16px rgba(56,189,248,0.25), 0 0 8px rgba(56,189,248,0.12);
+  border-color: rgba(56,189,248,0.45);
+  text-shadow: 0 0 10px rgba(56,189,248,0.5);
 }
 
 .header-btn.active {
-  background: linear-gradient(135deg, #ff1493, #ff69b4);
-  border-color: #ff1493;
+  background: linear-gradient(135deg, #ff2aa0, #ff69b4);
+  border-color: #ff2aa0;
   color: #fff;
-  box-shadow: 0 4px 15px rgba(255,20,147,0.3);
+  box-shadow: 0 4px 18px rgba(255,42,160,0.45), 0 0 10px rgba(255,42,160,0.2);
 }

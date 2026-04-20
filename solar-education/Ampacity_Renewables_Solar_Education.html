@@ -312,6 +312,7 @@
     .panel-body::-webkit-scrollbar { width: 6px; }
     .panel-body::-webkit-scrollbar-track { background: transparent; }
     .panel-body::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.3); border-radius: 3px; }
+    #title, .panel-subtitle, .panel-body, #stats { transition: opacity 0.22s ease; }
     
     .info-box { 
       background: rgba(30,41,59,0.5); 
@@ -1508,6 +1509,7 @@
 
   <script>
     let scene, camera, renderer, currentStep = 'module', animationId;
+    window._stepEnteredAt = Date.now();
     let isTopView = false;
     let demoTrackerGroup = null;  // Reference to demo tracker display
     let demoCombinerGroup = null; // Reference to demo combiner display
@@ -7469,8 +7471,22 @@
       
       document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
       document.querySelector(`[data-step="${step}"]`).classList.add('active');
+
+      const _prevStep = currentStep;
+      const _timeOnPrev = window._stepEnteredAt ? Math.round((Date.now() - window._stepEnteredAt) / 1000) : 0;
       currentStep = step;
-      updateContent();
+      window._stepEnteredAt = Date.now();
+      if (window.solarTracker && window.solarTracker.trackEvent) {
+        window.solarTracker.trackEvent('step_view', { step: step, prev_step: _prevStep, time_on_prev_seconds: _timeOnPrev });
+      }
+
+      const _fadeEls = ['title', 'subtitle', 'content', 'stats'].map(id => document.getElementById(id)).filter(Boolean);
+      _fadeEls.forEach(el => { el.style.opacity = '0'; });
+      setTimeout(() => {
+        updateContent();
+        document.getElementById('content').scrollTop = 0;
+        _fadeEls.forEach(el => { el.style.opacity = '1'; });
+      }, 220);
       
       // Hide demo objects when navigating (only show via close-up buttons)
       if (demoTrackerGroup) {
@@ -7551,6 +7567,7 @@
     
     function zoomToTrackerDemo() {
       isViewingTrackerDemo = true;
+      if (window.solarTracker && window.solarTracker.trackEvent) window.solarTracker.trackEvent('demo_view', { demo: 'tracker' });
       
       // Show Learning Path panel
       showLearningPath();
@@ -7594,6 +7611,7 @@
     
     function zoomToCombinerDemo() {
       isViewingCombinerDemo = true;
+      if (window.solarTracker && window.solarTracker.trackEvent) window.solarTracker.trackEvent('demo_view', { demo: 'combiner' });
       
       // Show Learning Path panel
       showLearningPath();
@@ -7690,6 +7708,7 @@
     
     function zoomToCablesView() {
       isViewingCablesDemo = true;
+      if (window.solarTracker && window.solarTracker.trackEvent) window.solarTracker.trackEvent('demo_view', { demo: 'cables' });
       
       // Show Learning Path panel
       showLearningPath();

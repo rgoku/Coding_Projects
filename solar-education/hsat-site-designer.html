@@ -67,10 +67,118 @@ const STEPS=["Module","Inverter","DC Collection","DC Combination"];
 function getValid(sel){let r=[...VALID_PATHS];if(sel.module)r=r.filter(p=>p.module===sel.module);if(sel.inverter)r=r.filter(p=>p.inverter===sel.inverter);if(sel.dcCollection)r=r.filter(p=>p.dcCollection===sel.dcCollection);if(sel.dcCombination)r=r.filter(p=>p.dcCombination===sel.dcCombination);return{modules:[...new Set(r.map(p=>p.module))],inverters:[...new Set(r.map(p=>p.inverter))],dcCollections:[...new Set(r.map(p=>p.dcCollection))],dcCombinations:[...new Set(r.map(p=>p.dcCombination))],matched:r.length===1?r[0]:null,remaining:r};}
 const T={bg:"#0b1121",bgDeep:"#060b17",card:"#111c32",cardHover:"#162442",cardDisabled:"#0a0f1a",border:"#1c2d4a",borderActive:"#00b8d4",borderDim:"#152238",accent:"#00d4ff",accentGlow:"rgba(0,212,255,0.15)",accentBright:"#00e5ff",text:"#e4eaf6",textSub:"#6b82a8",textDim:"#3d5278",textDisabled:"#2a3a55",pink:"#ff4081",orange:"#ff9100",green:"#00e676",yellow:"#ffea00",red:"#ff5252",purple:"#b388ff",blue:"#448aff",dcColor:"#ff5252",acColor:"#00e676",mvColor:"#b388ff",trunkColor:"#ff9100",font:"'Segoe UI','SF Pro Display',-apple-system,sans-serif",fontMono:"'JetBrains Mono','SF Mono','Cascadia Code',monospace"};
 
-function buildLayout(mt,cfg,sp){const mod=MOD[mt];const{rowLength,postSpacing,rowPitch,blockRows,blockCount}=sp;const invPer=INV_OPTS.find(o=>o.key===cfg.inverter)?.invPer||8;const modStep=mod.h+0.02;const mpr=Math.floor(rowLength/modStep);const spr=Math.floor(mpr/mod.strLen);const am=spr*mod.strLen;const al=am*modStep;const np=Math.max(3,Math.floor(al/postSpacing)+1);const di=Math.floor(np/2);const rkw=am*mod.watt/1000;const bkw=rkw*blockRows;const tmw=(bkw*blockCount)/1000;const ic=cfg.inverter==="central"?blockCount:blockCount*Math.ceil(blockRows/invPer);const rows=[],equip=[],dcR=[],acR=[],mvR=[],roads=[];const eqW=cfg.inverter==="central"?10:cfg.inverter==="cluster"?7:3;const bH=blockRows*rowPitch;const bW=al+eqW+4;const gap=9;const cols=Math.ceil(Math.sqrt(blockCount));const gR=Math.ceil(blockCount/cols);
-for(let bi=0;bi<blockCount;bi++){const gc=bi%cols,gr=Math.floor(bi/cols);const bx=gc*(bW+gap),by=gr*(bH+gap);roads.push({x:bx-3,y:by-3,w:bW+6,h:bH+6});for(let ri=0;ri<blockRows;ri++){const ry=by+ri*rowPitch;rows.push({x:bx,y:ry,len:al,mods:am,posts:np,driveIdx:di,block:bi});if(cfg.dcCollection==="harnesses"||cfg.dcCombination==="combiner"){dcR.push({x1:bx,y1:ry,x2:bx+al,y2:ry,t:"harness"});if(ri%4===3||ri===blockRows-1){const cx2=bx+al+2,cy=ry-Math.min(3,ri%4)*rowPitch/2;equip.push({x:cx2,y:cy,t:"combiner",block:bi});for(let d=Math.max(0,ri-3);d<=ri;d++)dcR.push({x1:bx+al,y1:by+d*rowPitch,x2:cx2,y2:cy,t:"drop"});}}else if(cfg.dcCollection==="trunk"||cfg.dcCombination==="lbd"){dcR.push({x1:bx,y1:ry,x2:bx+al,y2:ry,t:"trunk"});if(ri%4===3||ri===blockRows-1)equip.push({x:bx+al+2,y:ry-Math.min(3,ri%4)*rowPitch/2,t:"lbd",block:bi});}else{dcR.push({x1:bx,y1:ry,x2:bx+al,y2:ry,t:"homerun"});}}
-if(cfg.inverter==="distributed"){for(let ri=0;ri<blockRows;ri+=invPer){const iy=by+(ri+Math.min(invPer-1,blockRows-ri-1)/2)*rowPitch;equip.push({x:bx+al+2,y:iy,t:"str-inv",block:bi});acR.push({x1:bx+al+2,y1:iy,x2:bx+al+6,y2:iy});}}else if(cfg.inverter==="cluster"){for(let ci=0;ci<Math.ceil(blockRows/invPer);ci++){const iy=by+(ci*invPer+Math.min(invPer,blockRows-ci*invPer)/2)*rowPitch;equip.push({x:bx+al+5,y:iy,t:"clust-inv",block:bi});acR.push({x1:bx+al+5,y1:iy,x2:bx+al+9,y2:iy});}}else{const iy=by+bH/2;equip.push({x:bx+al+6,y:iy,t:"cent-inv",block:bi});equip.push({x:bx+al+6,y:iy+6,t:"mv-xfmr",block:bi});acR.push({x1:bx+al+6,y1:iy,x2:bx+al+6,y2:iy+6});}mvR.push({x1:bx-3,y1:by+bH+1.5,x2:bx+bW+3,y2:by+bH+1.5});}
-const subX=(cols*(bW+gap))/2,subY=gR*(bH+gap)+12;equip.push({x:subX,y:subY,t:"substation"});for(let g=0;g<cols;g++)mvR.push({x1:g*(bW+gap)+bW/2,y1:0,x2:g*(bW+gap)+bW/2,y2:subY});return{rows,equip,dcR,acR,mvR,roads,stats:{totalMods:am*blockRows*blockCount,totalStrs:spr*blockRows*blockCount,totMW:tmw,invCnt:ic,blkKW:bkw,modsPerRow:am,strsPerRow:spr,actLen:al,numPosts:np},bounds:{w:cols*(bW+gap),h:gR*(bH+gap)+25}};}
+function buildLayout(mt, cfg, sp) {
+  // Gilman-reference layout: N-S HSAT trackers, south-side equipment, centralized inverter yard
+  // Topology: 4 trackers → combiner box → string inverter → AC trench → central yard
+  const mod = MOD[mt];
+  const { rowLength, postSpacing, rowPitch, blockRows, blockCount } = sp;
+  const modStep = mod.h + 0.02;
+  const mpr = Math.floor(rowLength / modStep);
+  const spr = Math.floor(mpr / mod.strLen);
+  const am = spr * mod.strLen;       // actual modules used per tracker
+  const al = am * modStep;           // actual N-S length used
+  const np = Math.max(3, Math.floor(al / postSpacing) + 1);
+  const di = Math.floor(np / 2);
+  const rkw = am * mod.watt / 1000;
+  const bkw = rkw * blockRows;
+  const tmw = (bkw * blockCount) / 1000;
+
+  // Each group of 4 trackers feeds one combiner → one string inverter (Gilman ratio)
+  const CB_GROUP = 4;
+  const cbPerBlock = Math.ceil(blockRows / CB_GROUP);
+  const ic = cbPerBlock * blockCount;
+
+  const rows = [], equip = [], dcR = [], acR = [], mvR = [], roads = [];
+  const bW = blockRows * rowPitch;   // E-W block width
+  const bL = al;                     // N-S tracker length (actual)
+  const eqZone = 9;                  // south-side equipment zone depth (m)
+  const gap = 14;                    // E-W gap between blocks
+
+  const cols = Math.ceil(Math.sqrt(blockCount));
+  const gR = Math.ceil(blockCount / cols);
+
+  for (let bi = 0; bi < blockCount; bi++) {
+    const gc = bi % cols, gr = Math.floor(bi / cols);
+    const bx = gc * (bW + gap);                      // west edge of block
+    const by = gr * (bL + eqZone + gap);              // north edge of block
+
+    roads.push({ x: bx - 3, y: by - 3, w: bW + 6, h: bL + eqZone + 6 });
+
+    // N-S trackers spaced E-W across the block
+    for (let ti = 0; ti < blockRows; ti++) {
+      const tx = bx + ti * rowPitch + rowPitch * 0.5;
+      rows.push({ x: tx, y: by, len: al, mods: am, posts: np, driveIdx: di, block: bi, trackerIdx: ti });
+    }
+
+    // One combiner + one string inverter per 4-tracker group, at SOUTH end
+    for (let ci = 0; ci < cbPerBlock; ci++) {
+      const t0 = ci * CB_GROUP;
+      const t1 = Math.min(t0 + CB_GROUP - 1, blockRows - 1);
+      const grpCX = bx + ((t0 + t1) * 0.5) * rowPitch + rowPitch * 0.5; // E-W center of group
+      const southY = by + al + 1.5;   // 1.5 m south of array end
+
+      // DC homerun drop from each tracker south end → combiner
+      for (let ti = t0; ti <= t1; ti++) {
+        const tx = bx + ti * rowPitch + rowPitch * 0.5;
+        dcR.push({ x1: tx, y1: by + al, x2: grpCX, y2: southY, t: 'drop' });
+      }
+
+      // Combiner box centered on its tracker group, tight to array south edge
+      equip.push({ x: grpCX, y: southY, t: 'combiner', block: bi, group: ci });
+
+      // String inverter directly east of combiner (1.8 m offset, same southing)
+      equip.push({ x: grpCX + 1.8, y: southY, t: 'str-inv', block: bi, group: ci });
+
+      // AC cable: inverter south → collection trench → block midpoint
+      const collY = by + al + eqZone - 1;
+      acR.push({ x1: grpCX + 1.8, y1: southY, x2: grpCX + 1.8, y2: collY });
+      acR.push({ x1: grpCX + 1.8, y1: collY, x2: bx + bW * 0.5, y2: collY });
+    }
+
+    // MV collection trench along south edge of block
+    mvR.push({ x1: bx, y1: by + bL + eqZone, x2: bx + bW, y2: by + bL + eqZone });
+  }
+
+  // Central inverter yard — south of all blocks, horizontally centered
+  const yardCX = (cols * (bW + gap) - gap) * 0.5;
+  const yardY  = gR * (bL + eqZone + gap) + 4;
+
+  // Skid 1 — MV transformer + switchboard
+  equip.push({ x: yardCX - 10, y: yardY + 1,  t: 'mv-xfmr',   block: -1 });
+  // Skid 2 — Central inverter aggregation (VCI rack equivalent)
+  equip.push({ x: yardCX,      y: yardY + 1,  t: 'cent-inv',  block: -1 });
+  // Skid 3 — Switchboard + communications transformer
+  equip.push({ x: yardCX + 11, y: yardY + 1,  t: 'cent-inv',  block: -1 });
+  // Substation
+  equip.push({ x: yardCX,      y: yardY + 14, t: 'substation', block: -1 });
+
+  // MV cable from each block south trench → central yard
+  for (let bi = 0; bi < blockCount; bi++) {
+    const gc = bi % cols, gr = Math.floor(bi / cols);
+    const bCX = gc * (bW + gap) + bW * 0.5;
+    const bSY = gr * (bL + eqZone + gap) + bL + eqZone;
+    mvR.push({ x1: bCX, y1: bSY, x2: yardCX, y2: yardY + 1 });
+  }
+
+  return {
+    rows, equip, dcR, acR, mvR, roads,
+    stats: {
+      totalMods:  am * blockRows * blockCount,
+      totalStrs:  spr * blockRows * blockCount,
+      totMW:      tmw,
+      invCnt:     ic,
+      blkKW:      bkw,
+      modsPerRow: am,
+      strsPerRow: spr,
+      actLen:     al,
+      numPosts:   np
+    },
+    bounds: {
+      w: cols * (bW + gap),
+      h: gR * (bL + eqZone + gap) + 40
+    }
+  };
+}
 
 function makeLabel(text,bg,scale){const c=document.createElement("canvas");const x=c.getContext("2d");x.font="bold 48px Arial";const tw=x.measureText(text).width;c.width=tw+40;c.height=72;x.fillStyle=bg;const r=12,w=c.width,h=c.height;x.beginPath();x.moveTo(r,0);x.lineTo(w-r,0);x.quadraticCurveTo(w,0,w,r);x.lineTo(w,h-r);x.quadraticCurveTo(w,h,w-r,h);x.lineTo(r,h);x.quadraticCurveTo(0,h,0,h-r);x.lineTo(0,r);x.quadraticCurveTo(0,0,r,0);x.fill();x.fillStyle="#fff";x.font="bold 48px Arial";x.textAlign="center";x.textBaseline="middle";x.fillText(text,w/2,h/2);const t=new THREE.CanvasTexture(c);t.minFilter=THREE.LinearFilter;const m=new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false});const s=new THREE.Sprite(m);s.scale.set((c.width/c.height)*scale*2,scale*2,1);return s;}
 
@@ -115,145 +223,256 @@ function makeFirstSolarTex(){const c=document.createElement("canvas");c.width=51
 
 function makeGndTex(){const c=document.createElement("canvas");c.width=512;c.height=512;const x=c.getContext("2d");x.fillStyle="#8a9a5a";x.fillRect(0,0,512,512);for(let i=0;i<12000;i++){const px=Math.random()*512,py=Math.random()*512,v=0.7+Math.random()*0.6;x.fillStyle="rgba("+Math.floor(120*v)+","+Math.floor(135*v)+","+Math.floor(70*v)+",0.4)";x.fillRect(px,py,1+Math.random()*4,1+Math.random()*2);}const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;}
 
-function build3D(scene,layout,config){
-  while(scene.children.length>0)scene.remove(scene.children[0]);
-  const ms=MOD[config.module],tubeH=2.1,cx=layout.bounds.w/2,cz=layout.bounds.h/2;
+function build3D(scene, layout, config) {
+  // N-S HSAT tracker geometry: torque tube along Z, panels along Z, posts along Z
+  // row.x = E-W position (X axis), row.y = north start (Z axis), row.len = N-S extent
+  while (scene.children.length > 0) scene.remove(scene.children[0]);
+  const ms = MOD[config.module], tubeH = 2.1, cx = layout.bounds.w / 2, cz = layout.bounds.h / 2;
 
-  scene.add(new THREE.Mesh(new THREE.SphereGeometry(600,32,16),new THREE.ShaderMaterial({side:THREE.BackSide,uniforms:{},
-    vertexShader:"varying vec3 vP;void main(){vP=(modelMatrix*vec4(position,1.0)).xyz;gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.0);}",
-    fragmentShader:"varying vec3 vP;void main(){float h=normalize(vP).y;vec3 t=vec3(0.52,0.68,0.88);vec3 ho=vec3(0.82,0.86,0.90);vec3 g=vec3(0.45,0.48,0.32);vec3 c=h>0.0?mix(ho,t,pow(h,0.35)):mix(ho,g,pow(-h,0.6));gl_FragColor=vec4(c,1.0);}"})));
+  // Sky dome
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(600, 32, 16), new THREE.ShaderMaterial({
+    side: THREE.BackSide, uniforms: {},
+    vertexShader: "varying vec3 vP;void main(){vP=(modelMatrix*vec4(position,1.0)).xyz;gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.0);}",
+    fragmentShader: "varying vec3 vP;void main(){float h=normalize(vP).y;vec3 t=vec3(0.52,0.68,0.88);vec3 ho=vec3(0.82,0.86,0.90);vec3 g=vec3(0.45,0.48,0.32);vec3 c=h>0.0?mix(ho,t,pow(h,0.35)):mix(ho,g,pow(-h,0.6));gl_FragColor=vec4(c,1.0);}"
+  })));
 
-  scene.add(new THREE.AmbientLight(0xd0dce8,0.5));
-  scene.add(new THREE.HemisphereLight(0x9bbce0,0x6a7a4a,0.4));
-  const sun=new THREE.DirectionalLight(0xfff4e0,1.5);sun.position.set(50,70,25);sun.castShadow=true;sun.shadow.mapSize.set(4096,4096);
-  const sc=Math.max(layout.bounds.w,layout.bounds.h)*0.7;sun.shadow.camera.left=-sc;sun.shadow.camera.right=sc;sun.shadow.camera.top=sc;sun.shadow.camera.bottom=-sc;sun.shadow.camera.near=0.5;sun.shadow.camera.far=400;sun.shadow.bias=-0.0003;scene.add(sun);
-  const fill=new THREE.DirectionalLight(0xb0c8e0,0.35);fill.position.set(-30,25,-15);scene.add(fill);
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xd0dce8, 0.5));
+  scene.add(new THREE.HemisphereLight(0x9bbce0, 0x6a7a4a, 0.4));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 1.5);
+  sun.position.set(50, 70, 25); sun.castShadow = true;
+  sun.shadow.mapSize.set(4096, 4096);
+  const sc = Math.max(layout.bounds.w, layout.bounds.h) * 0.7;
+  sun.shadow.camera.left = -sc; sun.shadow.camera.right = sc;
+  sun.shadow.camera.top = sc; sun.shadow.camera.bottom = -sc;
+  sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 500; sun.shadow.bias = -0.0003;
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xb0c8e0, 0.35);
+  fill.position.set(-30, 25, -15); scene.add(fill);
 
-  const gS=Math.max(layout.bounds.w,layout.bounds.h)*3+200;const gT=makeGndTex();gT.repeat.set(gS/12,gS/12);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(gS,gS),new THREE.MeshStandardMaterial({map:gT,roughness:0.92}));
-  gnd.rotation.x=-Math.PI/2;gnd.position.y=-0.01;gnd.receiveShadow=true;scene.add(gnd);
+  // Ground
+  const gS = Math.max(layout.bounds.w, layout.bounds.h) * 3 + 200;
+  const gT = makeGndTex(); gT.repeat.set(gS / 12, gS / 12);
+  const gnd = new THREE.Mesh(new THREE.PlaneGeometry(gS, gS), new THREE.MeshStandardMaterial({ map: gT, roughness: 0.92 }));
+  gnd.rotation.x = -Math.PI / 2; gnd.position.y = -0.01; gnd.receiveShadow = true; scene.add(gnd);
 
-  const stl=new THREE.MeshStandardMaterial({color:0xa5a5a5,metalness:0.65,roughness:0.25});
-  const stlDk=new THREE.MeshStandardMaterial({color:0x707070,metalness:0.6,roughness:0.3});
-  const bolt=new THREE.MeshStandardMaterial({color:0x2a2a2a,metalness:0.9,roughness:0.15});
-  const orgM=new THREE.MeshStandardMaterial({color:0xff6600,emissive:0xff4400,emissiveIntensity:0.1,metalness:0.3,roughness:0.5});
-  const mtrM=new THREE.MeshStandardMaterial({color:0x1a3a8a,metalness:0.45,roughness:0.35});
-  const conc=new THREE.MeshStandardMaterial({color:0x8a8a8a,roughness:0.9});
-  const isBifacial=config.module==="bifacial";
-  const cTex=isBifacial?makeBifacialTex():makeFirstSolarTex();
-  const pnlM=isBifacial
-    ?new THREE.MeshStandardMaterial({map:cTex,metalness:0.15,roughness:0.08})
-    :new THREE.MeshStandardMaterial({map:cTex,color:0x111111,metalness:0.05,roughness:0.25});
-  const glsM=isBifacial
-    ?new THREE.MeshStandardMaterial({color:0x88aacc,metalness:0.2,roughness:0.02,transparent:true,opacity:0.1})
-    :new THREE.MeshStandardMaterial({color:0x111115,metalness:0.3,roughness:0.05,transparent:true,opacity:0.15});
-  const frmM=isBifacial
-    ?new THREE.MeshStandardMaterial({color:0xd0d4d8,metalness:0.8,roughness:0.15})
-    :new THREE.MeshStandardMaterial({color:0x1a1a1a,metalness:0.5,roughness:0.3});
-  const invM=new THREE.MeshStandardMaterial({color:0x2a2a2a,metalness:0.4,roughness:0.5});
-  const invGray=new THREE.MeshStandardMaterial({color:0x555555,metalness:0.3,roughness:0.6});
-  const ventM=new THREE.MeshStandardMaterial({color:0x1a1a1a,metalness:0.2,roughness:0.8});
-  const condM=new THREE.MeshStandardMaterial({color:0x606060,metalness:0.5,roughness:0.4});
-  const redC=new THREE.MeshStandardMaterial({color:0xff2200,roughness:0.4,emissive:0xff0000,emissiveIntensity:0.3});
-  const bluC=new THREE.MeshStandardMaterial({color:0x2244aa,roughness:0.5,emissive:0x1133aa,emissiveIntensity:0.2});
-  const grnC=new THREE.MeshStandardMaterial({color:0x00ff00,emissive:0x006600,emissiveIntensity:0.3,roughness:0.4});
-  const jncM=new THREE.MeshStandardMaterial({color:0xffdd00,roughness:0.3,emissive:0xffaa00,emissiveIntensity:0.3});
-  const whtM=new THREE.MeshStandardMaterial({color:0xffffff,metalness:0.1,roughness:0.7});
-  const capM=new THREE.MeshStandardMaterial({color:0x777777,metalness:0.6,roughness:0.35});
-  const tR=0.12;
+  // Shared materials
+  const stl  = new THREE.MeshStandardMaterial({ color: 0xa5a5a5, metalness: 0.65, roughness: 0.25 });
+  const stlDk = new THREE.MeshStandardMaterial({ color: 0x707070, metalness: 0.6,  roughness: 0.3 });
+  const orgM  = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 0.1, metalness: 0.3, roughness: 0.5 });
+  const mtrM  = new THREE.MeshStandardMaterial({ color: 0x1a3a8a, metalness: 0.45, roughness: 0.35 });
+  const conc  = new THREE.MeshStandardMaterial({ color: 0x8a8a8a, roughness: 0.9 });
+  const jncM  = new THREE.MeshStandardMaterial({ color: 0xffdd00, roughness: 0.3, emissive: 0xffaa00, emissiveIntensity: 0.3 });
+  const isBifacial = config.module === "bifacial";
+  const cTex = isBifacial ? makeBifacialTex() : makeFirstSolarTex();
+  const pnlM = isBifacial
+    ? new THREE.MeshStandardMaterial({ map: cTex, metalness: 0.15, roughness: 0.08 })
+    : new THREE.MeshStandardMaterial({ map: cTex, color: 0x111111, metalness: 0.05, roughness: 0.25 });
+  const glsM = isBifacial
+    ? new THREE.MeshStandardMaterial({ color: 0x88aacc, metalness: 0.2, roughness: 0.02, transparent: true, opacity: 0.1 })
+    : new THREE.MeshStandardMaterial({ color: 0x111115, metalness: 0.3, roughness: 0.05, transparent: true, opacity: 0.15 });
+  const frmM = isBifacial
+    ? new THREE.MeshStandardMaterial({ color: 0xd0d4d8, metalness: 0.8, roughness: 0.15 })
+    : new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.5, roughness: 0.3 });
+  const tR = 0.12;
 
-  const mw=ms.w,mh=ms.h;
-  const pGeo=new THREE.BoxGeometry(mh,0.06,mw);
-  const gGeo=new THREE.BoxGeometry(mh-0.02,0.003,mw-0.02);
+  // N-S oriented panel: width E-W = ms.w, length N-S = ms.h
+  const mw = ms.w, mh = ms.h;
+  const pGeo = new THREE.BoxGeometry(mw, 0.06, mh);
+  const gGeo = new THREE.BoxGeometry(mw - 0.02, 0.003, mh - 0.02);
 
-  layout.rows.forEach(row=>{
-    const rx=row.x-cx,rz=row.y-cz;
-    const g=new THREE.Group();
-    const tt=new THREE.Mesh(new THREE.CylinderGeometry(tR,tR,row.len+0.5,12),stl);
-    tt.rotation.z=Math.PI/2;tt.position.set(row.len/2,tubeH,0);tt.castShadow=true;g.add(tt);
-    const rOff=mw*0.35;
-    [-rOff,0,rOff].forEach(zo=>{
-      const rl=new THREE.Mesh(new THREE.BoxGeometry(row.len+1,0.05,0.06),stl);
-      rl.position.set(row.len/2,tubeH+tR+0.05,zo);rl.castShadow=true;g.add(rl);
+  // Build each N-S tracker
+  layout.rows.forEach(row => {
+    const rx = row.x - cx, rz = row.y - cz;  // E-W pos, N start in world space
+    const g = new THREE.Group();
+
+    // Torque tube runs N-S (rotation.x = PI/2 lays cylinder along Z)
+    const tt = new THREE.Mesh(new THREE.CylinderGeometry(tR, tR, row.len + 0.5, 12), stl);
+    tt.rotation.x = Math.PI / 2;
+    tt.position.set(0, tubeH, row.len / 2);
+    tt.castShadow = true; g.add(tt);
+
+    // Three purlins along N-S, offset E-W
+    const rOff = mw * 0.35;
+    [-rOff, 0, rOff].forEach(xo => {
+      const rl = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, row.len + 1), stl);
+      rl.position.set(xo, tubeH + tR + 0.05, row.len / 2);
+      rl.castShadow = true; g.add(rl);
     });
-    const pStp=row.len/(row.posts-1);
-    for(let p=0;p<row.posts;p++){
-      const px=p*pStp;const isDr=p===row.driveIdx;const pH=tubeH-0.1;
-      const isArr=p%2===0;
-      const post=new THREE.Mesh(new THREE.BoxGeometry(0.06,pH,0.08),stl);
-      post.position.set(px,pH/2,0);post.castShadow=true;g.add(post);
-      if(isArr){
-        const clmp=new THREE.Mesh(new THREE.CylinderGeometry(tR+0.03,tR+0.03,0.08,8),stlDk);
-        clmp.rotation.z=Math.PI/2;clmp.position.set(px,tubeH,0);g.add(clmp);
-        const fanR=0.22;const shape=new THREE.Shape();
-        shape.moveTo(0,-fanR);shape.lineTo(0,fanR);shape.absarc(0,0,fanR,Math.PI/2,-Math.PI/2,true);
-        const fan=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:0.015,bevelEnabled:false}),stl);
-        fan.rotation.x=Math.PI/2;fan.position.set(px,tubeH,0);g.add(fan);
-      }else{
-        const nbx=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.16,0.1),stlDk);
-        nbx.position.set(px,tubeH,0);g.add(nbx);
-        const badge=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.015,10),orgM);
-        badge.rotation.x=Math.PI/2;badge.position.set(px,tubeH-0.03,0.07);g.add(badge);
+
+    // Posts spaced along N-S axis
+    const pStp = row.len / (row.posts - 1);
+    for (let p = 0; p < row.posts; p++) {
+      const pz = p * pStp;
+      const isDr = p === row.driveIdx;
+      const pH = tubeH - 0.1;
+      const isArr = p % 2 === 0;
+
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, pH, 0.06), stl);
+      post.position.set(0, pH / 2, pz); post.castShadow = true; g.add(post);
+
+      if (isArr) {
+        // Array Tech fan-plate (bearing / slew ring)
+        const clmp = new THREE.Mesh(new THREE.CylinderGeometry(tR + 0.03, tR + 0.03, 0.08, 8), stlDk);
+        clmp.rotation.x = Math.PI / 2; clmp.position.set(0, tubeH, pz); g.add(clmp);
+        const fanR = 0.22; const shape = new THREE.Shape();
+        shape.moveTo(0, -fanR); shape.lineTo(0, fanR); shape.absarc(0, 0, fanR, Math.PI / 2, -Math.PI / 2, true);
+        const fan = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 0.015, bevelEnabled: false }), stl);
+        fan.rotation.x = Math.PI / 2; fan.position.set(0, tubeH, pz); g.add(fan);
+      } else {
+        // Nextracker-style node box + orange badge
+        const nbx = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 0.1), stlDk);
+        nbx.position.set(0, tubeH, pz); g.add(nbx);
+        const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.015, 10), orgM);
+        badge.rotation.z = Math.PI / 2; badge.position.set(0.07, tubeH - 0.03, pz); g.add(badge);
       }
-      if(config.inverter==="distributed"&&p%4===1){
-        const invY=tubeH*0.42;
-        const ib=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.3,0.4),invM);
-        ib.position.set(px,invY,0.22);ib.castShadow=true;g.add(ib);
-        [0x00ff00,0x00ff00,0xffaa00].forEach((lc,li)=>{
-          const led=new THREE.Mesh(new THREE.SphereGeometry(0.012,6,6),new THREE.MeshStandardMaterial({color:lc,emissive:lc,emissiveIntensity:1.0}));
-          led.position.set(px,invY+0.08-li*0.05,0.3);g.add(led);
+
+      if (isDr) {
+        // Drive motor cylinder (N-S axis) + control box
+        const mc = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.18, 8), mtrM);
+        mc.rotation.x = Math.PI / 2; mc.position.set(0, tubeH + 0.1, pz); mc.castShadow = true; g.add(mc);
+        const mbx = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), mtrM);
+        mbx.position.set(0.14, tubeH + 0.1, pz); g.add(mbx);
+        const ra = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, 0.15), new THREE.MeshStandardMaterial({ color: 0xcc2222 }));
+        ra.position.set(0.14, tubeH + 0.17, pz); g.add(ra);
+      }
+    }
+
+    // Solar panels along N-S axis (Z direction)
+    for (let m = 0; m < row.mods; m++) {
+      const mz = m * (mh + 0.02) + mh / 2;
+      const pn = new THREE.Mesh(pGeo, pnlM);
+      pn.position.set(0, tubeH + tR + 0.08, mz); pn.castShadow = true; pn.receiveShadow = true; g.add(pn);
+      const gl = new THREE.Mesh(gGeo, glsM);
+      gl.position.set(0, tubeH + tR + 0.113, mz); g.add(gl);
+      const ft = 0.03;
+      // E-W frame rails
+      [-1, 1].forEach(dx => {
+        const e = new THREE.Mesh(new THREE.BoxGeometry(ft, 0.065, mh + ft * 2), frmM);
+        e.position.set(dx * (mw / 2 + ft / 2), tubeH + tR + 0.08, mz); g.add(e);
+      });
+      // N-S frame rails
+      [-1, 1].forEach(dz => {
+        const e = new THREE.Mesh(new THREE.BoxGeometry(mw + ft * 2, 0.065, ft), frmM);
+        e.position.set(0, tubeH + tR + 0.08, mz + dz * (mh / 2 + ft / 2)); g.add(e);
+      });
+      if (m % 4 === 0) {
+        const jb = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.04, 0.15), jncM);
+        jb.position.set(0, tubeH + tR + 0.04, mz); g.add(jb);
+      }
+    }
+
+    g.position.set(rx, 0, rz); scene.add(g);
+  });
+
+  // Equipment catalogue: sizes reflect real Gilman-scale hardware
+  const eqI = {
+    combiner:   { c: 0xcc2222, l: "COMBINER",       h: 1.0, w: 0.8, d: 0.55 },
+    lbd:        { c: 0xe08020, l: "LBD",             h: 1.0, w: 0.8, d: 0.55 },
+    "str-inv":  { c: 0x30a888, l: "STRING INV",      h: 1.5, w: 1.0, d: 0.50 },
+    "clust-inv":{ c: 0xccbb00, l: "CLUSTER INV",     h: 2.0, w: 2.5, d: 1.50 },
+    "cent-inv": { c: 0x1f55cc, l: "INVERTER SKID",  h: 2.5, w: 4.5, d: 2.20 },
+    "mv-xfmr":  { c: 0x7733bb, l: "MV XFMR",        h: 2.2, w: 3.5, d: 2.00 },
+    substation: { c: 0x4a22aa, l: "SUBSTATION",      h: 4.5, w: 9.0, d: 6.00 }
+  };
+
+  layout.equip.forEach(eq => {
+    const ex = eq.x - cx, ez = eq.y - cz;
+    const info = eqI[eq.t]; if (!info) return;
+    const mat = new THREE.MeshStandardMaterial({ color: info.c, roughness: 0.48, metalness: 0.32 });
+    const big = ["cent-inv", "mv-xfmr", "substation"].includes(eq.t);
+    // Concrete pad under large equipment
+    if (big) {
+      const pd = new THREE.Mesh(new THREE.BoxGeometry(info.w + 1.8, 0.18, info.d + 1.8), conc);
+      pd.position.set(ex, 0.09, ez); pd.receiveShadow = true; scene.add(pd);
+    }
+    const box = new THREE.Mesh(new THREE.BoxGeometry(info.w, info.h, info.d), mat);
+    box.position.set(ex, (big ? 0.18 : 0) + info.h / 2, ez); box.castShadow = true; scene.add(box);
+    // White edge highlight
+    const ed = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(info.w, info.h, info.d)),
+      new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.14 }));
+    ed.position.copy(box.position); scene.add(ed);
+
+    // MV transformer radiator fins
+    if (eq.t === "mv-xfmr") {
+      [-1, 1].forEach(f => {
+        const fn = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.7, info.d + 0.5), mat);
+        fn.position.set(ex + f * (info.w / 2 + 0.12), 1.1, ez); scene.add(fn);
+      });
+    }
+    // Substation security fence
+    if (eq.t === "substation") {
+      const fm = new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.5, roughness: 0.3 });
+      for (let fx = -(info.w / 2 + 2); fx <= info.w / 2 + 2; fx += 1.4) {
+        [-1, 1].forEach(fz => {
+          const fp = new THREE.Mesh(new THREE.BoxGeometry(0.05, 3.2, 0.05), fm);
+          fp.position.set(ex + fx, 1.6, ez + fz * (info.d / 2 + 1.8)); scene.add(fp);
         });
-        const rc=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.5,6),redC);
-        rc.position.set(px,invY+0.35,0.2);g.add(rc);
-        const bc=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.5,6),bluC);
-        bc.position.set(px,invY+0.35,0.18);g.add(bc);
       }
-      if(isDr){
-        const mc=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.18,8),mtrM);
-        mc.rotation.z=Math.PI/2;mc.position.set(px,tubeH+0.1,0);mc.castShadow=true;g.add(mc);
-        const mbx=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.14,0.14),mtrM);
-        mbx.position.set(px+0.14,tubeH+0.1,0);g.add(mbx);
-        const ra=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.02,0.15),new THREE.MeshStandardMaterial({color:0xcc2222}));
-        ra.position.set(px+0.14,tubeH+0.17,0);g.add(ra);
-      }
+      [0.9, 1.8, 2.6].forEach(fy => [-1, 1].forEach(fz => {
+        const wr = new THREE.Mesh(new THREE.BoxGeometry(info.w + 4.5, 0.015, 0.015), fm);
+        wr.position.set(ex, fy, ez + fz * (info.d / 2 + 1.8)); scene.add(wr);
+      }));
     }
-    for(let m=0;m<row.mods;m++){
-      const mx=m*(mh+0.02)+mh/2;
-      const pn=new THREE.Mesh(pGeo,pnlM);pn.position.set(mx,tubeH+tR+0.08,0);pn.castShadow=true;pn.receiveShadow=true;g.add(pn);
-      const gl=new THREE.Mesh(gGeo,glsM);gl.position.set(mx,tubeH+tR+0.113,0);g.add(gl);
-      const ft=0.03;
-      [-1,1].forEach(dx=>{const e=new THREE.Mesh(new THREE.BoxGeometry(ft,0.065,mw+ft*2),frmM);e.position.set(mx+dx*(mh/2+ft/2),tubeH+tR+0.08,0);g.add(e);});
-      [-1,1].forEach(dz=>{const e=new THREE.Mesh(new THREE.BoxGeometry(mh+ft*2,0.065,ft),frmM);e.position.set(mx,tubeH+tR+0.08,dz*(mw/2+ft/2));g.add(e);});
-      if(m%4===0){const jb=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.04,0.15),jncM);jb.position.set(mx,tubeH+tR+0.04,0);g.add(jb);}
-      if(m>0){[-rOff,rOff].forEach(zo=>{const cl=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.02,0.04),frmM);cl.position.set(mx-mh/2-0.01,tubeH+tR+0.115,zo);g.add(cl);});}
-    }
-    g.position.set(rx,0,rz);scene.add(g);
+
+    const cc2 = info.c;
+    const lb = makeLabel(info.l,
+      "rgba(" + (cc2 >> 16 & 0xff) + "," + (cc2 >> 8 & 0xff) + "," + (cc2 & 0xff) + ",0.88)",
+      eq.t === "substation" ? 2.5 : big ? 1.8 : 0.85);
+    lb.position.set(ex, info.h + (big ? 1.9 : 1.1), ez); scene.add(lb);
   });
 
-  const eqI={combiner:{c:0xcc2222,l:"COMBINER",h:1,w:0.8,d:0.6},"lbd":{c:0xe08020,l:"LBD",h:1,w:0.8,d:0.6},"str-inv":{c:0x00bb55,l:"STRING INV",h:1.5,w:1.2,d:0.6},"clust-inv":{c:0xccbb00,l:"CLUSTER INV",h:2,w:2.5,d:1.5},"cent-inv":{c:0x3366cc,l:"CENTRAL INV",h:3,w:4,d:2.5},"mv-xfmr":{c:0x8855cc,l:"MV XFMR",h:2.2,w:2.5,d:1.8},substation:{c:0x5522aa,l:"SUBSTATION",h:4.5,w:7,d:5}};
-  layout.equip.forEach(eq=>{
-    const ex=eq.x-cx,ez=eq.y-cz,info=eqI[eq.t];if(!info)return;
-    const mat=new THREE.MeshStandardMaterial({color:info.c,roughness:0.5,metalness:0.3});
-    const big=["clust-inv","cent-inv","mv-xfmr","substation"].includes(eq.t);
-    if(big){const pd=new THREE.Mesh(new THREE.BoxGeometry(info.w+1.5,0.18,info.d+1.5),conc);pd.position.set(ex,0.09,ez);pd.receiveShadow=true;scene.add(pd);}
-    const bx=new THREE.Mesh(new THREE.BoxGeometry(info.w,info.h,info.d),mat);bx.position.set(ex,(big?0.18:0)+info.h/2,ez);bx.castShadow=true;scene.add(bx);
-    const ed=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(info.w,info.h,info.d)),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.12}));ed.position.copy(bx.position);scene.add(ed);
-    if(eq.t==="mv-xfmr")[-1,1].forEach(f=>{const fn=new THREE.Mesh(new THREE.BoxGeometry(0.08,1.6,info.d+0.4),mat);fn.position.set(ex+f*(info.w/2+0.15),1.0,ez);scene.add(fn);});
-    if(eq.t==="substation"){const fm=new THREE.MeshStandardMaterial({color:0x777777,metalness:0.5,roughness:0.3});for(let fx=-(info.w/2+1.5);fx<=info.w/2+1.5;fx+=1.2)[-1,1].forEach(fz=>{const fp=new THREE.Mesh(new THREE.BoxGeometry(0.05,3,0.05),fm);fp.position.set(ex+fx,1.5,ez+fz*(info.d/2+1.2));scene.add(fp);});[0.8,1.6,2.4].forEach(fy=>[-1,1].forEach(fz=>{const wr=new THREE.Mesh(new THREE.BoxGeometry(info.w+3.2,0.015,0.015),fm);wr.position.set(ex,fy,ez+fz*(info.d/2+1.2));scene.add(wr);}));}
-    const cc2=info.c;const lb=makeLabel(info.l,"rgba("+(cc2>>16&0xff)+","+(cc2>>8&0xff)+","+(cc2&0xff)+",0.85)",eq.t==="substation"?2.5:big?1.8:1);lb.position.set(ex,info.h+(big?1.5:0.8),ez);scene.add(lb);
+  // Cable runs
+  layout.dcR.forEach(r => {
+    const c = r.t === "trunk" ? 0xff9100 : r.t === "homerun" ? 0x607080 : 0xff3333;
+    scene.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(r.x1 - cx, 0.05, r.y1 - cz),
+        new THREE.Vector3(r.x2 - cx, 0.05, r.y2 - cz)]),
+      new THREE.LineBasicMaterial({ color: c })));
+  });
+  layout.acR.forEach(r => scene.add(new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(r.x1 - cx, 0.07, r.y1 - cz),
+      new THREE.Vector3(r.x2 - cx, 0.07, r.y2 - cz)]),
+    new THREE.LineBasicMaterial({ color: 0x00cc66 }))));
+  layout.mvR.forEach(r => scene.add(new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(r.x1 - cx, 0.09, r.y1 - cz),
+      new THREE.Vector3(r.x2 - cx, 0.09, r.y2 - cz)]),
+    new THREE.LineBasicMaterial({ color: 0x9955ee }))));
+
+  // Service roads
+  const rdM = new THREE.MeshStandardMaterial({ color: 0x6a6a55, roughness: 0.85 });
+  layout.roads.forEach(r => {
+    [
+      { x: r.x + r.w / 2, z: r.y,           w: r.w + 2, d: 1.8 },
+      { x: r.x + r.w / 2, z: r.y + r.h,     w: r.w + 2, d: 1.8 },
+      { x: r.x,           z: r.y + r.h / 2, w: 1.8, d: r.h },
+      { x: r.x + r.w,     z: r.y + r.h / 2, w: 1.8, d: r.h }
+    ].forEach(rd => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(rd.w, 0.03, rd.d), rdM);
+      m.position.set(rd.x - cx, 0.015, rd.z - cz); m.receiveShadow = true; scene.add(m);
+    });
   });
 
-  layout.dcR.forEach(r=>{const c=r.t==="trunk"?0xff9100:r.t==="homerun"?0x607080:0xff4444;scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(r.x1-cx,.04,r.y1-cz),new THREE.Vector3(r.x2-cx,.04,r.y2-cz)]),new THREE.LineBasicMaterial({color:c})));});
-  layout.acR.forEach(r=>scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(r.x1-cx,.06,r.y1-cz),new THREE.Vector3(r.x2-cx,.06,r.y2-cz)]),new THREE.LineBasicMaterial({color:0x00cc66}))));
-  layout.mvR.forEach(r=>scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(r.x1-cx,.05,r.y1-cz),new THREE.Vector3(r.x2-cx,.05,r.y2-cz)]),new THREE.LineBasicMaterial({color:0x9955ee}))));
+  // Block labels (positioned at center-north of each block, high enough to see)
+  new Set(layout.rows.map(r => r.block)).forEach(bi => {
+    if (bi < 0) return;
+    const bR = layout.rows.filter(r => r.block === bi);
+    const midX = (Math.min(...bR.map(r => r.x)) + Math.max(...bR.map(r => r.x))) / 2;
+    const midZ = (Math.min(...bR.map(r => r.y)) + Math.max(...bR.map(r => r.y + r.len))) / 2;
+    const l = makeLabel("BLOCK " + (bi + 1), "rgba(0,180,220,0.75)", 2);
+    l.position.set(midX - cx, 10, midZ - cz); scene.add(l);
+  });
 
-  const rdM=new THREE.MeshStandardMaterial({color:0x6a6a55,roughness:0.85});
-  layout.roads.forEach(r=>{[{x:r.x+r.w/2,z:r.y,w:r.w+2,d:1.8},{x:r.x+r.w/2,z:r.y+r.h,w:r.w+2,d:1.8},{x:r.x,z:r.y+r.h/2,w:1.8,d:r.h},{x:r.x+r.w,z:r.y+r.h/2,w:1.8,d:r.h}].forEach(rd=>{const m=new THREE.Mesh(new THREE.BoxGeometry(rd.w,.03,rd.d),rdM);m.position.set(rd.x-cx,.015,rd.z-cz);m.receiveShadow=true;scene.add(m);});});
-
-  new Set(layout.rows.map(r=>r.block)).forEach(bi=>{const bR=layout.rows.filter(r=>r.block===bi);const l=makeLabel("BLOCK "+(bi+1),"rgba(0,180,220,0.7)",2);l.position.set((Math.min(...bR.map(r=>r.x))+Math.max(...bR.map(r=>r.x+r.len)))/2-cx,8,(Math.min(...bR.map(r=>r.y))+Math.max(...bR.map(r=>r.y)))/2-cz);scene.add(l);});
-
-  const cg=new THREE.Group();const cArr=new THREE.Mesh(new THREE.CylinderGeometry(0,0.5,2,4),new THREE.MeshStandardMaterial({color:0xff3333}));cArr.rotation.x=-Math.PI/2;cArr.position.z=-1;cg.add(cArr);
-  const nL=makeLabel("N","#ff3333",1.2);nL.position.set(0,0.5,-2.5);cg.add(nL);cg.position.set(-cx-8,3,-cz-8);scene.add(cg);
+  // Compass (top-left corner, N arrow points toward negative Z = north)
+  const cg = new THREE.Group();
+  const cArr = new THREE.Mesh(new THREE.CylinderGeometry(0, 0.5, 2, 4), new THREE.MeshStandardMaterial({ color: 0xff3333 }));
+  cArr.rotation.x = -Math.PI / 2; cArr.position.z = -1; cg.add(cArr);
+  const nL = makeLabel("N", "#ff3333", 1.2); nL.position.set(0, 0.5, -2.5); cg.add(nL);
+  cg.position.set(-cx - 8, 3, -cz - 8); scene.add(cg);
 }
 
 function Scene3D({layout,config,sp,camRef}){
@@ -359,12 +578,20 @@ function SiteDesigner({config,matched,onBack}){
               <div style={{fontSize:10,color:T.textSub,width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4,background:"rgba(255,255,255,0.06)",border:"1px solid "+T.borderDim}}>{showLeg?"&#x25BE;":"&#x25B8;"}</div>
             </div>
             {showLeg&&<div style={{marginTop:6}}>
-            {[config.module==="bifacial"?{c:"#1c3a60",l:"Bifacial Panels (blue cells + busbars)"}:{c:"#111111",l:"First Solar Panels (black thin film)"},{c:"#ff6600",l:"Nextracker Orange Badge"},{c:"#a5a5a5",l:"Array Tech Fan Plate"},{c:"#1a3a8a",l:"Drive Motor (blue)"},{c:"#a5a5a5",l:"W-Beam Steel Posts"},
-              config.inverter==="distributed"&&{c:"#2a2a2a",l:"String Inverter (LEDs)"},
-              config.dcCombination==="combiner"&&{c:"#cc2222",l:"Combiner Box"},config.dcCombination==="lbd"&&{c:"#e08020",l:"LBD"},
-              config.inverter==="cluster"&&{c:"#ccbb00",l:"Cluster Inverter"},config.inverter==="central"&&{c:"#3366cc",l:"Central Inverter"},
-              config.inverter==="central"&&{c:"#8855cc",l:"MV Transformer"},{c:"#5522aa",l:"Substation"},{c:"#6a6a55",l:"Service Roads"},
-              {c:"#ff2200",l:"DC+ Cable (red)"},{c:"#2244aa",l:"DC- Cable (blue)"},{c:"#00ff00",l:"Ground Wire (green)"}
+            {[
+              config.module==="bifacial"?{c:"#1c3a60",l:"Bifacial Panels (N-S tracker)"}:{c:"#111111",l:"First Solar Panels (N-S tracker)"},
+              {c:"#ff6600",l:"Nextracker Node Badge"},
+              {c:"#a5a5a5",l:"Array Tech Fan Plate (bearing)"},
+              {c:"#1a3a8a",l:"Drive Motor"},
+              {c:"#cc2222",l:"Combiner Box (south end)"},
+              {c:"#30a888",l:"String Inverter (paired w/ CB)"},
+              {c:"#1f55cc",l:"Inverter Skid (central yard)"},
+              {c:"#7733bb",l:"MV Transformer (central yard)"},
+              {c:"#4a22aa",l:"Substation"},
+              {c:"#6a6a55",l:"Service Roads"},
+              {c:"#ff3333",l:"DC homerun (tracker→combiner)"},
+              {c:"#00cc66",l:"AC cable (inverter→yard)"},
+              {c:"#9955ee",l:"MV cable (yard→substation)"}
             ].filter(Boolean).map((it,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:7,marginTop:4}}><div style={{width:12,height:12,borderRadius:3,background:it.c,border:"1px solid rgba(255,255,255,0.1)",flexShrink:0}} /><span style={{color:T.textSub}}>{it.l}</span></div>))}
             </div>}
           </div>
@@ -411,10 +638,10 @@ function SiteDesigner({config,matched,onBack}){
           </div>
           <div style={{flex:1,overflow:"auto",padding:14}}>
             {sideTab==="layout"&&(<div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <SL>ROW GEOMETRY</SL><Sli label="Row Length (m)" value={sp.rowLength} min={60} max={300} step={5} onChange={v=>up("rowLength",v)} />
+              <SL>TRACKER GEOMETRY (N-S HSAT)</SL><Sli label="Tracker Length N-S (m)" value={sp.rowLength} min={60} max={300} step={5} onChange={v=>up("rowLength",v)} />
               <Sli label="Post Spacing (m)" value={sp.postSpacing} min={4} max={10} step={0.5} onChange={v=>up("postSpacing",v)} />
-              <Sli label="Row Pitch (m)" value={sp.rowPitch} min={4} max={10} step={0.5} onChange={v=>up("rowPitch",v)} />
-              <SL>BLOCK STRUCTURE</SL><Sli label="Rows per Block" value={sp.blockRows} min={6} max={20} step={1} onChange={v=>up("blockRows",v)} />
+              <Sli label="E-W Tracker Spacing (m)" value={sp.rowPitch} min={4} max={10} step={0.5} onChange={v=>up("rowPitch",v)} />
+              <SL>BLOCK STRUCTURE</SL><Sli label="Trackers per Block (E-W)" value={sp.blockRows} min={4} max={24} step={4} onChange={v=>up("blockRows",v)} />
               <Sli label="Block Count" value={sp.blockCount} min={1} max={12} step={1} onChange={v=>up("blockCount",v)} />
               <div style={{padding:10,borderRadius:6,background:T.bgDeep,border:"1px solid "+T.border,fontSize:10,color:T.textSub,lineHeight:"1.6"}}><span style={{color:T.accent,fontWeight:700}}>&#x2139; </span>Components match the Ampacity Renewables style: W-beam posts, alternating Array Tech fan plates &amp; Nextracker orange badges, cylindrical torque tubes, teal cell panels with busbars, string inverters with LEDs.</div>
             </div>)}
@@ -428,8 +655,8 @@ function SiteDesigner({config,matched,onBack}){
             </div>)}
             {sideTab==="stats"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
               <SL>SITE SUMMARY</SL><SR label="Total Capacity" value={layout.stats.totMW.toFixed(2)+" MW"} accent /><SR label="Total Modules" value={layout.stats.totalMods.toLocaleString()} /><SR label="Total Strings" value={layout.stats.totalStrs.toLocaleString()} /><SR label="Inverters" value={layout.stats.invCnt} />
-              <SL>PER ROW</SL><SR label="Modules / Row" value={layout.stats.modsPerRow} /><SR label="Strings / Row" value={layout.stats.strsPerRow} /><SR label="Row Length" value={layout.stats.actLen.toFixed(1)+" m"} /><SR label="Posts / Row" value={layout.stats.numPosts} />
-              <SL>PER BLOCK</SL><SR label="Block Power" value={layout.stats.blkKW.toFixed(0)+" kW"} /><SR label="Rows / Block" value={sp.blockRows} />
+              <SL>PER TRACKER</SL><SR label="Modules / Tracker" value={layout.stats.modsPerRow} /><SR label="Strings / Tracker" value={layout.stats.strsPerRow} /><SR label="Tracker Length" value={layout.stats.actLen.toFixed(1)+" m"} /><SR label="Posts / Tracker" value={layout.stats.numPosts} />
+              <SL>PER BLOCK</SL><SR label="Block Power" value={layout.stats.blkKW.toFixed(0)+" kW"} /><SR label="Trackers / Block" value={sp.blockRows} /><SR label="Combiner Groups" value={Math.ceil(sp.blockRows/4)} />
               <SL>MODULE</SL><SR label="Type" value={MOD[config.module].name} /><SR label="Rating" value={MOD[config.module].watt+"W"} /><SR label="String Length" value={MOD[config.module].strLen+" modules"} />
             </div>)}
           </div>
@@ -440,7 +667,12 @@ function SiteDesigner({config,matched,onBack}){
 function SL({children}){return <div style={{fontSize:9,color:T.textDim,letterSpacing:"1px",fontWeight:700,fontFamily:T.fontMono,marginTop:4}}>{children}</div>;}
 function IR({label,value}){return <div style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid "+T.borderDim,fontSize:11}}><span style={{color:T.textSub}}>{label}</span><span style={{color:T.text,fontWeight:600}}>{value}</span></div>;}
 function SR({label,value,accent}){return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",borderRadius:6,background:T.bgDeep,border:"1px solid "+T.borderDim}}><span style={{fontSize:10,color:T.textDim,fontFamily:T.fontMono}}>{label}</span><span style={{fontSize:accent?14:12,fontWeight:700,color:accent?T.accent:T.text,fontFamily:T.fontMono}}>{value}</span></div>;}
-function Chain({config}){const s=["MODULE","STRING"];if(config.dcCollection==="harnesses")s.push("HARNESS");if(config.dcCollection==="trunk")s.push("TRUNK BUS");if(config.dcCombination==="combiner")s.push("COMBINER");if(config.dcCombination==="lbd")s.push("LBD");s.push(config.inverter==="distributed"?"STR INV":config.inverter==="cluster"?"CLUST INV":"CENT INV");s.push("MV XFMR","MV COLL","SUBSTATION");const cm={MODULE:"#64748b",STRING:"#94a3b8",HARNESS:T.dcColor,"TRUNK BUS":T.trunkColor,COMBINER:T.dcColor,LBD:T.trunkColor,"STR INV":T.green,"CLUST INV":T.yellow,"CENT INV":T.blue,"MV XFMR":T.mvColor,"MV COLL":T.mvColor,SUBSTATION:"#7c3aed"};return(<div style={{display:"flex",flexWrap:"wrap",gap:3,alignItems:"center"}}>{s.map((x,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:3}}><span style={{fontSize:8,fontWeight:700,padding:"2px 5px",borderRadius:3,background:cm[x]||T.textDim,color:"#000",whiteSpace:"nowrap"}}>{x}</span>{i<s.length-1&&<span style={{color:T.textDim,fontSize:9}}>&#x2192;</span>}</div>))}</div>);}
+function Chain({config}){
+  // Gilman topology: always combiner → string inverter → central yard
+  const s=["MODULE","DC DROP","COMBINER","STR INV","AC TRENCH","INV SKID","MV XFMR","SUBSTATION"];
+  const cm={MODULE:"#64748b","DC DROP":T.dcColor,COMBINER:"#cc2222","STR INV":"#30a888","AC TRENCH":T.acColor,"INV SKID":"#1f55cc","MV XFMR":T.mvColor,SUBSTATION:"#7c3aed"};
+  return(<div style={{display:"flex",flexWrap:"wrap",gap:3,alignItems:"center"}}>{s.map((x,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:3}}><span style={{fontSize:8,fontWeight:700,padding:"2px 5px",borderRadius:3,background:cm[x]||T.textDim,color:"#000",whiteSpace:"nowrap"}}>{x}</span>{i<s.length-1&&<span style={{color:T.textDim,fontSize:9}}>&#x2192;</span>}</div>))}</div>);
+}
 function Sli({label,value,min,max,step,onChange}){const pct=((value-min)/(max-min))*100;return(<div><div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}><span style={{fontSize:10,color:T.textSub}}>{label}</span><span style={{fontSize:10,color:T.accent,fontWeight:600,fontFamily:T.fontMono}}>{Number.isInteger(step)?value:value.toFixed(1)}</span></div><div style={{position:"relative",height:18,display:"flex",alignItems:"center"}}><div style={{position:"absolute",width:"100%",height:3,background:T.borderDim,borderRadius:2}} /><div style={{position:"absolute",width:pct+"%",height:3,background:T.accent,borderRadius:2}} /><input type="range" min={min} max={max} step={step} value={value} onChange={e=>onChange(parseFloat(e.target.value))} style={{position:"absolute",width:"100%",height:18,opacity:0,cursor:"pointer",margin:0}} /><div style={{position:"absolute",left:"calc("+pct+"% - 6px)",width:12,height:12,borderRadius:"50%",background:T.accent,border:"2px solid "+T.bgDeep,pointerEvents:"none",boxShadow:"0 0 6px rgba(0,212,255,0.3)"}} /></div></div>);}
 
 function App(){const[view,setView]=useState("wizard");const[config,setConfig]=useState(null);const[matched,setMatched]=useState(null);
